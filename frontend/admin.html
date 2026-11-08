@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="km" class="h-full bg-slate-950 text-slate-100">
+
+<head>
+  <script src="js/api-config.js"></script>
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    #mapPicker {
+      width: 100%;
+      height: 460px;
+      border-radius: 1rem;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      z-index: 10;
+    }
+
+    @media (max-width: 640px) {
+      #mapPicker { height: 380px; }
+    }
+  </style>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Portal - Universal Attendance System</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              400: '#818cf8',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'Battambang', 'system-ui', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Battambang:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body class="h-full flex flex-col antialiased selection:bg-brand-500 selection:text-white">
+
+  <!-- TOP HEADER / NAVBAR -->
+  <header class="glass-panel sticky top-0 z-40 border-b border-slate-800 px-4 py-3">
+    <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-3">
+      <div class="flex items-center space-x-3">
+        <div
+          class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-400 flex items-center justify-center shadow-lg shadow-brand-500/20">
+          <i data-lucide="qr-code" class="w-6 h-6 text-white"></i>
+        </div>
+        <div>
+          <h1 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+            <span class="lang-km">ប្រព័ន្ធកត់ត្រាវត្តមាន</span>
+            <span class="lang-en hidden">Smart Attendance</span>
+            <span
+              class="text-xs font-normal px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-300 border border-brand-500/30">PWA
+              v2.4</span>
+          </h1>
+          <p class="text-xs text-slate-400">
+            <span class="lang-km">ប្រព័ន្ធគ្រប់គ្រងវត្តមានឆ្លាតវៃ (FRD Compliant)</span>
+            <span class="lang-en hidden">Universal Attendance Tracking Platform</span>
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-2 sm:space-x-3">
+        <!-- Badge បង្ហាញ Role បច្ចុប្បន្ន -->
+        <span id="userRoleBadge"
+          class="px-3 py-1 rounded-full text-xs font-semibold bg-brand-500/20 text-brand-300 border border-brand-500/30">
+          Checking Role...
+        </span>
+
+        <button onclick="toggleLang()"
+          class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-xs font-medium text-slate-300 border border-slate-800 flex items-center gap-1.5 transition">
+          <i data-lucide="globe" class="w-4 h-4 text-brand-400"></i>
+          <span id="langLabel">ខ្មែរ / EN</span>
+        </button>
+
+        <select onchange="window.location.href=this.value"
+          class="bg-slate-900 border border-slate-800 text-xs text-slate-200 rounded-lg px-3 py-1.5 font-medium focus:ring-2 focus:ring-brand-500 outline-none cursor-pointer">
+          <option value="admin.html" selected>📊 Portal: Admin Management</option>
+          <option value="index.html">📱 App: User (Student/Staff)</option>
+          <option value="kiosk.html">🖥️ Display: Gate Dynamic QR Kiosk</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
+
+    <div class="flex border-b border-slate-800 space-x-4 overflow-x-auto">
+      <button onclick="switchTab('dashboard')" id="tabBtnDashboard"
+        class="pb-3 text-sm font-semibold text-brand-400 border-b-2 border-brand-500 flex items-center gap-2 whitespace-nowrap">
+        <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Analytics Dashboard
+      </button>
+      <button onclick="switchTab('users')" id="tabBtnUsers"
+        class="pb-3 text-sm font-medium text-slate-400 hover:text-slate-200 border-b-2 border-transparent flex items-center gap-2 whitespace-nowrap">
+        <i data-lucide="users" class="w-4 h-4"></i> User Management
+      </button>
+      <button onclick="switchTab('logs')" id="tabBtnLogs"
+        class="pb-3 text-sm font-medium text-slate-400 hover:text-slate-200 border-b-2 border-transparent flex items-center gap-2 whitespace-nowrap">
+        <i data-lucide="clipboard-list" class="w-4 h-4"></i> Attendance Logs & Audit
+      </button>
+      <button onclick="switchTab('reports')" id="tabBtnReports"
+        class="pb-3 text-sm font-medium text-slate-400 hover:text-slate-200 border-b-2 border-transparent flex items-center gap-2 whitespace-nowrap">
+        <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> Reports & Export
+      </button>
+      <button onclick="switchTab('settings')" id="tabBtnSettings"
+        class="pb-3 text-sm font-medium text-slate-400 hover:text-slate-200 border-b-2 border-transparent flex items-center gap-2 whitespace-nowrap">
+        <i data-lucide="shield-check" class="w-4 h-4"></i> Geofence & Security
+      </button>
+    </div>
+
+    <!-- TAB 1: DASHBOARD -->
+    <div id="tabDashboard" class="space-y-6">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="glass-panel p-5 rounded-2xl border border-slate-800 flex items-center justify-between">
+          <div>
+            <p class="text-xs font-medium text-slate-400">Total Registered (សរុប)</p>
+            <h3 id="totalRegisteredCount" class="text-3xl font-bold text-white mt-1">0</h3>
+          </div>
+          <div class="w-12 h-12 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center">
+            <i data-lucide="users" class="w-6 h-6"></i>
+          </div>
+        </div>
+        <div class="glass-panel p-5 rounded-2xl border border-slate-800 flex items-center justify-between">
+          <div>
+            <p class="text-xs font-medium text-slate-400">Present Today (វត្តមាន)</p>
+            <h3 class="text-3xl font-bold text-emerald-400 mt-1">1</h3>
+          </div>
+          <div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+            <i data-lucide="user-check" class="w-6 h-6"></i>
+          </div>
+        </div>
+        <div class="glass-panel p-5 rounded-2xl border border-slate-800 flex items-center justify-between">
+          <div>
+            <p class="text-xs font-medium text-slate-400">Absent Today (អវត្តមាន)</p>
+            <h3 class="text-3xl font-bold text-rose-400 mt-1">1</h3>
+          </div>
+          <div class="w-12 h-12 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center">
+            <i data-lucide="user-x" class="w-6 h-6"></i>
+          </div>
+        </div>
+        <div class="glass-panel p-5 rounded-2xl border border-slate-800 flex items-center justify-between">
+          <div>
+            <p class="text-xs font-medium text-slate-400">Late Arrivals (មកយឺត)</p>
+            <h3 class="text-3xl font-bold text-amber-400 mt-1">1</h3>
+          </div>
+          <div class="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
+            <i data-lucide="clock" class="w-6 h-6"></i>
+          </div>
+        </div>
+      </div>
+
+      <div class="glass-panel rounded-2xl p-6 border border-slate-800">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-base font-semibold text-white">Weekly Attendance Analytics</h3>
+        </div>
+        <div class="w-full h-64">
+          <canvas id="attendanceChart" class="w-full h-full"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: USER MANAGEMENT -->
+    <div id="tabUsers" class="hidden space-y-4">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <div class="flex items-center gap-2 w-full sm:w-auto">
+          <input type="text" placeholder="Search by name, ID, department..."
+            class="bg-slate-900 border border-slate-800 text-xs text-slate-200 rounded-xl px-4 py-2.5 w-full sm:w-64 outline-none">
+          <select
+            class="bg-slate-900 border border-slate-800 text-xs text-slate-200 rounded-xl px-3 py-2.5 outline-none">
+            <option value="ALL">All Departments</option>
+            <option value="IT Dept">IT Dept</option>
+            <option value="HR Dept">HR Dept</option>
+            <option value="Management">Management</option>
+          </select>
+        </div>
+        <!-- ប៊ូតុង Add New User (លាក់ដោយស្វ័យប្រវត្តំបើមិនមែន Admin) -->
+        <button id="btnAddUser" onclick="openAddUserModal()"
+          class="py-2.5 px-4 bg-brand-600 hover:bg-brand-500 text-white font-semibold rounded-xl text-xs flex items-center gap-2 shadow-lg cursor-pointer">
+          <i data-lucide="user-plus" class="w-4 h-4"></i> Add New User
+        </button>
+      </div>
+
+      <div class="glass-panel rounded-2xl overflow-hidden border border-slate-800/80 shadow-2xl">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs text-slate-300">
+            <thead
+              class="bg-slate-900/80 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800">
+              <tr>
+                <th class="p-4">USER DETAILS</th>
+                <th class="p-4">USER ID</th>
+                <th class="p-4">DEPT / CLASS</th>
+                <th class="p-4">ROLE</th>
+                <th class="p-4">STATUS</th>
+                <th id="thActions" class="p-4 text-right">ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody" class="divide-y divide-slate-800/60 bg-slate-900/30">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: LOGS -->
+    <div id="tabLogs" class="hidden space-y-4">
+      <h3 class="text-base font-semibold text-white">Live Attendance Audit Logs</h3>
+      <div class="glass-panel rounded-2xl overflow-hidden border border-slate-800">
+        <table class="w-full text-left text-xs text-slate-300">
+          <thead class="bg-slate-900/80 text-slate-400 uppercase font-semibold border-b border-slate-800">
+            <tr>
+              <th class="p-4">User</th>
+              <th class="p-4">Check-In</th>
+              <th class="p-4">Check-Out</th>
+              <th class="p-4">Status</th>
+              <th class="p-4 text-right">Override Action</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800">
+            <tr>
+              <td class="p-4 font-medium text-white">John Doe</td>
+              <td class="p-4 text-slate-400">08:00 AM</td>
+              <td class="p-4 text-slate-400">05:00 PM</td>
+              <td class="p-4 text-emerald-400 font-semibold">Present</td>
+              <td class="p-4 text-right"><button class="text-brand-400 hover:underline">Override</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB 4: REPORTS -->
+    <div id="tabReports" class="hidden space-y-6">
+      <div class="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4">
+        <h3 class="text-base font-semibold text-white">Generate Attendance Reports</h3>
+        <div class="flex gap-3 pt-2">
+          <button onclick="window.print()"
+            class="py-2.5 px-5 bg-rose-600 hover:bg-rose-500 text-white font-semibold rounded-xl text-xs shadow-lg">Printable
+            PDF</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 5: GEOFENCE -->
+    <div id="tabSettings" class="hidden space-y-6">
+      <div class="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4">
+        <h3 class="text-base font-semibold text-white flex items-center gap-2">Institutional Geofence & QR Configuration
+        </h3>
+        <p id="geofenceAccessNote" class="text-xs text-slate-400">Only Admin can change and save the attendance location.</p>
+        <div class="flex flex-col sm:flex-row gap-2">
+          <input id="locationSearchInput" type="search" placeholder="Search a place or address..."
+            class="min-w-0 flex-1 bg-slate-900 border border-slate-800 text-xs text-white rounded-xl p-3 outline-none focus:ring-2 focus:ring-brand-500"
+            aria-label="Search for a map location">
+          <button id="locationSearchButton" type="button" onclick="searchMapLocation()"
+            class="py-2.5 px-5 bg-slate-700 hover:bg-slate-600 text-white text-xs font-semibold rounded-xl">Search location</button>
+        </div>
+        <div id="locationSearchResults" class="hidden space-y-1" aria-live="polite"></div>
+        <p id="locationSearchStatus" class="text-xs text-slate-400" aria-live="polite"></p>
+        <div id="mapPicker"></div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Latitude</label>
+            <input type="number" step="0.000001" id="geoLat" value="11.5564"
+              class="w-full bg-slate-900 border border-slate-800 text-xs text-white rounded-xl p-2.5 outline-none">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Longitude</label>
+            <input type="number" step="0.000001" id="geoLng" value="104.9282"
+              class="w-full bg-slate-900 border border-slate-800 text-xs text-white rounded-xl p-2.5 outline-none">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Allowed Radius (Meters)</label>
+            <input type="number" id="geoRadius" value="500"
+              class="w-full bg-slate-900 border border-slate-800 text-xs text-white rounded-xl p-2.5 outline-none">
+          </div>
+        </div>
+        <button id="saveGeofenceButton" onclick="saveGeofenceSettings()"
+          class="py-2.5 px-5 bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold rounded-xl shadow-lg">Save
+          Settings</button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ADD / EDIT USER MODAL -->
+  <div id="userModal"
+    class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div class="glass-panel max-w-md w-full rounded-2xl p-6 border border-slate-800 shadow-2xl relative">
+      <button onclick="closeUserModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white transition">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <h3 id="userModalTitle" class="text-lg font-bold text-white mb-4">Add New User</h3>
+
+      <form id="userForm" onsubmit="saveUser(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Full Name (ឈ្មោះពេញ)</label>
+          <input type="text" id="modalFullName" placeholder="Sok Dara" required
+            class="w-full bg-slate-900 border border-slate-800 text-xs text-white rounded-xl p-3 outline-none focus:ring-2 focus:ring-brand-500">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">User ID (អត្តលេខ)</label>
+          <input type="text" id="modalUserId" placeholder="EMP-9999" required
+            class="w-full bg-slate-900 border border-slate-800 text-xs text-white rounded-xl p-3 outline-none focus:ring-2 focus:ring-brand-500">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Department / Class</label>
+          <select id="modalDepartment"
+            class="w-full bg-slate-900 border border-slate-800 text-xs text-white rounded-xl p-3 outline-none cursor-pointer">
+            <option value="IT Dept">IT Dept</option>
+            <option value="HR Dept">HR Dept</option>
+            <option value="Management">Management</option>
+            <option value="Engineering">Engineering</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Role</label>
+          <select id="modalRole"
+            class="w-full bg-slate-900 border border-slate-800 text-xs text-white rounded-xl p-3 outline-none cursor-pointer">
+            <option value="employee">Staff</option>
+            <option value="admin">Admin</option>
+            <option value="student">Student</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Email (optional)</label>
+          <input type="email" id="modalEmail" placeholder="user@example.com"
+            class="w-full bg-slate-900 border border-slate-800 text-xs text-white rounded-xl p-3 outline-none focus:ring-2 focus:ring-brand-500">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Password</label>
+          <input type="password" id="modalPassword" minlength="6" autocomplete="new-password"
+            class="w-full bg-slate-900 border border-slate-800 text-xs text-white rounded-xl p-3 outline-none focus:ring-2 focus:ring-brand-500">
+          <p id="modalPasswordHint" class="mt-1 text-[11px] text-slate-500">Required for a new user; leave blank to keep the current password when editing.</p>
+        </div>
+        <button type="submit"
+          class="w-full py-3 bg-brand-600 hover:bg-brand-500 text-white font-semibold rounded-xl text-xs shadow-lg transition mt-2">
+          Save User
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // ពិនិត្យសិទ្ធិ User ពេលទំព័រ Load ចូលមក
+    let currentUser = null;
+    let usersCache = [];
+    let editingUserId = null;
+    const isCurrentUserAdmin = () => String(currentUser?.role || '').toLowerCase() === 'admin';
+    const authHeaders = () => ({
+      'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
+      'Content-Type': 'application/json'
+    });
+    const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[char]);
+
+    document.addEventListener('DOMContentLoaded', () => {
+      if (window.lucide) { lucide.createIcons(); }
+
+      // ទាញយកព័ត៌មាន User ពី localStorage
+      const userJson = localStorage.getItem('user');
+      if (userJson) {
+        try {
+          currentUser = JSON.parse(userJson);
+        } catch (e) {
+          currentUser = null;
+        }
+      }
+
+      // កំណត់សិទ្ធិបង្ហាញ Role លើ Header
+      const badge = document.getElementById('userRoleBadge');
+      if (badge) {
+        badge.innerText = 'Role: ' + (currentUser ? currentUser.role : 'Guest/User');
+      }
+
+      // ប្រសិនបើមិនមែនជា Admin ទេ ធ្វើការលាក់ប៊ូតុង Add User និង Column Actions ក្នុងตារាង
+      if (!isCurrentUserAdmin()) {
+        const btnAdd = document.getElementById('btnAddUser');
+        if (btnAdd) btnAdd.style.display = 'none';
+      }
+      applyGeofenceAccess();
+      document.getElementById('locationSearchInput').addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          searchMapLocation();
+        }
+      });
+
+      initAttendanceChart();
+      loadUsers();
+      geofenceSettingsPromise = loadGeofenceSettings();
+    });
+
+    let map = null;
+    let marker = null;
+    let circle = null;
+    let geofenceSettingsPromise = null;
+    let lastLocationSearchAt = 0;
+
+    async function searchMapLocation() {
+      if (!isCurrentUserAdmin()) return;
+      const input = document.getElementById('locationSearchInput');
+      const button = document.getElementById('locationSearchButton');
+      const resultsContainer = document.getElementById('locationSearchResults');
+      const status = document.getElementById('locationSearchStatus');
+      const query = input.value.trim();
+      resultsContainer.replaceChildren();
+      resultsContainer.classList.add('hidden');
+      if (query.length < 3) {
+        status.textContent = 'Enter at least 3 characters to search.';
+        return;
+      }
+
+      button.disabled = true;
+      const waitMs = Math.max(0, 1100 - (Date.now() - lastLocationSearchAt));
+      status.textContent = waitMs > 0 ? 'Searching shortly…' : 'Searching map locations…';
+      try {
+        if (waitMs) await new Promise((resolve) => setTimeout(resolve, waitMs));
+        lastLocationSearchAt = Date.now();
+
+        let places = [];
+        let serviceError = null;
+        try {
+          const photonParams = new URLSearchParams({
+            q: query, limit: '10', lang: 'en', lat: '12.5657', lon: '104.9910', zoom: '6'
+          });
+          const photonResponse = await fetch(`https://photon.komoot.io/api/?${photonParams}`, {
+            headers: { Accept: 'application/json' },
+            referrerPolicy: 'strict-origin-when-cross-origin'
+          });
+          if (!photonResponse.ok) throw new Error('Photon location search failed.');
+          const photonData = await photonResponse.json();
+          places = (photonData.features || [])
+            .filter((feature) => String(feature.properties?.countrycode || '').toLowerCase() === 'kh')
+            .map((feature) => {
+              const properties = feature.properties || {};
+              const [longitude, latitude] = feature.geometry?.coordinates || [];
+              const label = [properties.name, properties.street, properties.city || properties.county, properties.state, properties.country]
+                .filter((part, index, values) => part && values.indexOf(part) === index)
+                .join(', ');
+              return { lat: latitude, lon: longitude, display_name: label };
+            })
+            .filter((place) => place.display_name && Number.isFinite(Number(place.lat)) && Number.isFinite(Number(place.lon)));
+        } catch (error) {
+          serviceError = error;
+        }
+
+        if (!places.length) {
+          try {
+            const params = new URLSearchParams({
+              q: query, format: 'jsonv2', limit: '5', countrycodes: 'kh', 'accept-language': 'km,en'
+            });
+            const response = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
+              headers: { Accept: 'application/json' },
+              referrerPolicy: 'strict-origin-when-cross-origin'
+            });
+            if (!response.ok) throw new Error('Nominatim location search failed.');
+            places = await response.json();
+          } catch (error) {
+            serviceError = error;
+          }
+        }
+
+        // The geocoder can return unrelated Phnom Penh universities for this
+        // query. Prefer the known DUC pin from the map listing when explicitly
+        // searching for DUC, instead of showing those misleading matches.
+        const normalizedQuery = query.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+        if (normalizedQuery === 'duc' || normalizedQuery.includes('digital university of cambodia')) {
+          places = [{
+            lat: '11.4168125',
+            lon: '104.7664375',
+            display_name: 'Digital University of Cambodia, Prey ToTueng, Siem Reap, Cambodia'
+          }];
+        }
+        if (!places.length) {
+          if (serviceError) throw new Error('Location search is unavailable. Check your internet connection and try again.');
+          status.textContent = 'No places found. Try a nearby city, landmark, or address.';
+          return;
+        }
+
+        places.forEach((place) => {
+          const resultButton = document.createElement('button');
+          resultButton.type = 'button';
+          resultButton.className = 'block w-full text-left px-3 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-xs text-slate-200';
+          resultButton.textContent = place.display_name;
+          resultButton.addEventListener('click', () => selectMapLocation(place));
+          resultsContainer.appendChild(resultButton);
+        });
+        resultsContainer.classList.remove('hidden');
+        status.textContent = 'Choose a result to move the geofence marker.';
+      } catch (error) {
+        status.textContent = error.message || 'Could not search for that location.';
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    function selectMapLocation(place) {
+      if (!isCurrentUserAdmin() || !map || !marker || !circle) return;
+      const latitude = Number(place.lat);
+      const longitude = Number(place.lon);
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
+      const position = [latitude, longitude];
+      marker.setLatLng(position);
+      circle.setLatLng(position);
+      map.setView(position, 19);
+      document.getElementById('geoLat').value = latitude.toFixed(6);
+      document.getElementById('geoLng').value = longitude.toFixed(6);
+      document.getElementById('locationSearchInput').value = place.display_name;
+      document.getElementById('locationSearchResults').classList.add('hidden');
+      document.getElementById('locationSearchStatus').textContent = 'Location selected. Save Settings to apply this geofence.';
+    }
+
+    function applyGeofenceAccess() {
+      const canEdit = isCurrentUserAdmin();
+      ['geoLat', 'geoLng', 'geoRadius', 'saveGeofenceButton', 'locationSearchInput', 'locationSearchButton'].forEach((id) => {
+        const control = document.getElementById(id);
+        if (control) control.disabled = !canEdit;
+      });
+      const note = document.getElementById('geofenceAccessNote');
+      if (note) note.textContent = canEdit
+        ? 'Only Admin can change and save the attendance location.'
+        : 'View only: ask an Admin to change or save the attendance location.';
+    }
+
+    async function loadGeofenceSettings() {
+      try {
+        const response = await fetch(window.apiUrl('/api/attendance/geofence'), { headers: authHeaders(), cache: 'no-store' });
+        const config = await response.json().catch(() => ({
+          message: response.status === 404
+            ? 'Attendance API route not found. Restart the backend server and reload this page.'
+            : 'Could not read the geofence response.'
+        }));
+        if (!response.ok) throw new Error(config.message || 'Could not load geofence settings.');
+        if (config) {
+          document.getElementById('geoLat').value = config.latitude;
+          document.getElementById('geoLng').value = config.longitude;
+          document.getElementById('geoRadius').value = config.radius;
+        }
+      } catch (error) {
+        console.error('Could not load geofence settings:', error);
+      }
+    }
+
+    function switchTab(tabName) {
+      ['dashboard', 'users', 'logs', 'reports', 'settings'].forEach(t => {
+        const tabEl = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
+        const btnEl = document.getElementById('tabBtn' + t.charAt(0).toUpperCase() + t.slice(1));
+        if (tabEl) tabEl.classList.add('hidden');
+        if (btnEl) {
+          btnEl.classList.remove('text-brand-400', 'border-brand-500', 'font-semibold');
+          btnEl.classList.add('text-slate-400', 'border-transparent', 'font-medium');
+        }
+      });
+
+      const activeTab = document.getElementById('tab' + tabName.charAt(0).toUpperCase() + tabName.slice(1));
+      const activeBtn = document.getElementById('tabBtn' + tabName.charAt(0).toUpperCase() + tabName.slice(1));
+      if (activeTab) activeTab.classList.remove('hidden');
+      if (activeBtn) {
+        activeBtn.classList.add('text-brand-400', 'border-brand-500', 'font-semibold');
+        activeBtn.classList.remove('text-slate-400', 'border-transparent', 'font-medium');
+      }
+
+      if (tabName === 'settings') {
+        setTimeout(async () => {
+          if (!map && geofenceSettingsPromise) await geofenceSettingsPromise;
+          initMapPicker();
+        }, 200);
+      }
+    }
+
+    function initMapPicker() {
+      const latInput = document.getElementById('geoLat');
+      const lngInput = document.getElementById('geoLng');
+      const radiusInput = document.getElementById('geoRadius');
+
+      if (!latInput || !lngInput) return;
+
+      const initialLat = parseFloat(latInput.value) || 11.5564;
+      const initialLng = parseFloat(lngInput.value) || 104.9282;
+      const initialRadius = parseInt(radiusInput.value) || 500;
+
+      if (!map) {
+        map = L.map('mapPicker', { maxZoom: 23 }).setView([initialLat, initialLng], 18);
+
+        const streetMapLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxNativeZoom: 19,
+          maxZoom: 22,
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'
+        });
+        const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+          maxNativeZoom: 23,
+          maxZoom: 23,
+          attribution: 'Source: Esri, Vantor, Earthstar Geographics, and the GIS User Community'
+        });
+        streetMapLayer.addTo(map);
+        L.control.layers({
+          'Street map': streetMapLayer,
+          'Satellite imagery': satelliteLayer
+        }, null, { position: 'topright' }).addTo(map);
+
+        marker = L.marker([initialLat, initialLng], { draggable: isCurrentUserAdmin() }).addTo(map);
+
+        circle = L.circle([initialLat, initialLng], {
+          color: '#6366f1',
+          fillColor: '#6366f1',
+          fillOpacity: 0.2,
+          radius: initialRadius
+        }).addTo(map);
+
+        marker.on('dragend', function (e) {
+          if (!isCurrentUserAdmin()) return;
+          const pos = marker.getLatLng();
+          latInput.value = pos.lat.toFixed(6);
+          lngInput.value = pos.lng.toFixed(6);
+          circle.setLatLng(pos);
+        });
+
+        map.on('click', function (e) {
+          if (!isCurrentUserAdmin()) return;
+          marker.setLatLng(e.latlng);
+          circle.setLatLng(e.latlng);
+          latInput.value = e.latlng.lat.toFixed(6);
+          lngInput.value = e.latlng.lng.toFixed(6);
+        });
+
+        const updateMapFromInputs = () => {
+          const lat = Number(latInput.value);
+          const lng = Number(lngInput.value);
+          if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return;
+          const position = [lat, lng];
+          marker.setLatLng(position);
+          circle.setLatLng(position);
+          map.setView(position, Math.max(map.getZoom(), 17));
+        };
+        latInput.addEventListener('change', updateMapFromInputs);
+        lngInput.addEventListener('change', updateMapFromInputs);
+        radiusInput.addEventListener('input', () => {
+          const radius = Number(radiusInput.value);
+          if (Number.isFinite(radius) && radius > 0) circle.setRadius(radius);
+        });
+      } else {
+        map.invalidateSize();
+        const lat = Number(latInput.value);
+        const lng = Number(lngInput.value);
+        const radius = Number(radiusInput.value);
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+          marker.setLatLng([lat, lng]);
+          circle.setLatLng([lat, lng]);
+          map.setView([lat, lng]);
+        }
+        if (Number.isFinite(radius) && radius > 0) circle.setRadius(radius);
+      }
+    }
+
+    async function saveGeofenceSettings() {
+      if (!isCurrentUserAdmin()) {
+        alert('សូមអភ័យទោស! មានតែ Admin ទេដែលអាចកែប្រែ Geofence បាន។');
+        return;
+      }
+      const latitude = Number(document.getElementById('geoLat').value);
+      const longitude = Number(document.getElementById('geoLng').value);
+      const radius = Number(document.getElementById('geoRadius').value);
+      try {
+        const response = await fetch(window.apiUrl('/api/attendance/geofence'), {
+          method: 'PUT', headers: authHeaders(), body: JSON.stringify({ latitude, longitude, radius })
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || 'Could not save geofence settings.');
+        alert(`Geofence settings saved.\nLatitude: ${latitude}\nLongitude: ${longitude}\nRadius: ${radius}m`);
+      } catch (error) {
+        alert(error.message);
+      }
+    }
+
+    function initAttendanceChart() {
+      const ctx = document.getElementById('attendanceChart')?.getContext('2d');
+      if (!ctx) return;
+
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+          datasets: [{
+            label: 'Attendance Rate',
+            data: [62, 71, 74, 68, 79, 45, 38],
+            borderColor: '#6366f1',
+            backgroundColor: 'rgba(99, 102, 241, 0.1)',
+            borderWidth: 3,
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: '#818cf8',
+            pointRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#94a3b8' } },
+            y: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#94a3b8' } }
+          }
+        }
+      });
+    }
+
+    function toggleLang() {
+      document.querySelectorAll('.lang-km').forEach(el => el.classList.toggle('hidden'));
+      document.querySelectorAll('.lang-en').forEach(el => el.classList.toggle('hidden'));
+    }
+
+    // Load Users with Demo Data Fallback
+    async function loadUsers() {
+      try {
+        const res = await fetch(window.apiUrl('/api/users'), {
+          headers: authHeaders()
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Server returned status ' + res.status);
+        usersCache = Array.isArray(data) ? data : (data.users || []);
+        renderUsersTable(usersCache);
+        const total = document.getElementById('totalRegisteredCount');
+        if (total) total.textContent = usersCache.length;
+
+      } catch (err) {
+        console.warn('មិនអាចភ្ជាប់ទៅ Server បានទេ:', err);
+        const tbody = document.getElementById('usersTableBody');
+        if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-rose-300">${escapeHtml(err.message)}</td></tr>`;
+      }
+    }
+
+    function renderUsersTable(usersList) {
+      const tbody = document.getElementById('usersTableBody');
+      if (!tbody) return;
+
+      const isAdmin = isCurrentUserAdmin();
+
+      tbody.innerHTML = '';
+      usersList.forEach(user => {
+        // បើជា Admin ទើបបង្ហាញប៊ូតុង Edit/Delete បើជា User ធម្មតាគឺលាក់ចោល
+        const actionsHtml = isAdmin ? `
+          <td class="p-4 text-right space-x-2">
+            <button onclick="openEditUserModal('${user._id}')" class="text-brand-400 hover:underline font-medium">Edit</button>
+            <button onclick="deleteUserRow('${user._id}')" class="text-rose-400 hover:underline font-medium">Delete</button>
+          </td>
+        ` : `<td class="p-4 text-right text-slate-505 text-[11px]">View Only</td>`;
+
+        tbody.innerHTML += `
+          <tr class="border-b border-slate-800/60 hover:bg-slate-900/40 transition">
+            <td class="p-4 font-bold text-white">${escapeHtml(user.fullName || user.name || 'N/A')}</td>
+            <td class="p-4 text-slate-400 font-mono">${escapeHtml(user.userId || user.id || 'N/A')}</td>
+            <td class="p-4 text-slate-300">${escapeHtml(user.department || user.dept || 'N/A')}</td>
+            <td class="p-4"><span class="px-2 py-0.5 rounded text-[11px] bg-slate-800 text-slate-300 border border-slate-700">${escapeHtml(user.role || 'Staff')}</span></td>
+            <td class="p-4"><span class="px-2.5 py-1 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">${escapeHtml(user.status || 'Active')}</span></td>
+            ${actionsHtml}
+          </tr>
+        `;
+      });
+    }
+
+    // Modal Control Functions (Protected for Admin Only)
+    function openAddUserModal() {
+      if (!isCurrentUserAdmin()) {
+        alert('សូមអភ័យទោស! មានតែ Admin ទេដែលអាចបន្ថែម User បាន។');
+        return;
+      }
+      const modal = document.getElementById('userModal');
+      const title = document.getElementById('userModalTitle');
+      editingUserId = null;
+      if (title) title.innerText = 'Add New User';
+      if (document.getElementById('userForm')) document.getElementById('userForm').reset();
+      document.getElementById('modalPassword').required = true;
+      if (modal) modal.classList.remove('hidden');
+    }
+
+    function closeUserModal() {
+      const modal = document.getElementById('userModal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function openEditUserModal(id) {
+      if (!isCurrentUserAdmin()) {
+        alert('សូមអភ័យទោស! មានតែ Admin ទេដែលអាចកែប្រែទិន្នន័យបាន។');
+        return;
+      }
+      const user = usersCache.find((item) => item._id === id);
+      if (!user) return alert('User not found. Refresh the user list and try again.');
+      editingUserId = id;
+      const modal = document.getElementById('userModal');
+      const title = document.getElementById('userModalTitle');
+      if (title) title.innerText = 'Edit User: ' + (user.userId || id);
+      document.getElementById('modalFullName').value = user.name || user.fullName || '';
+      document.getElementById('modalUserId').value = user.userId || '';
+      document.getElementById('modalEmail').value = user.email || '';
+      document.getElementById('modalDepartment').value = user.department || 'IT Dept';
+      document.getElementById('modalRole').value = String(user.role || 'employee').toLowerCase();
+      document.getElementById('modalPassword').value = '';
+      document.getElementById('modalPassword').required = false;
+      if (modal) modal.classList.remove('hidden');
+    }
+
+    async function saveUser(event) {
+      event.preventDefault();
+      if (!isCurrentUserAdmin()) return alert('Action denied. Admin access is required.');
+
+      const payload = {
+        name: document.getElementById('modalFullName').value.trim(),
+        userId: document.getElementById('modalUserId').value.trim(),
+        email: document.getElementById('modalEmail').value.trim(),
+        department: document.getElementById('modalDepartment').value,
+        role: document.getElementById('modalRole').value,
+        password: document.getElementById('modalPassword').value
+      };
+
+      try {
+        const response = await fetch(window.apiUrl(editingUserId ? `/api/users/${encodeURIComponent(editingUserId)}` : '/api/users'), {
+          method: editingUserId ? 'PUT' : 'POST',
+          headers: authHeaders(),
+          body: JSON.stringify(payload)
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || `Request failed (${response.status})`);
+
+        const wasEditing = Boolean(editingUserId);
+        closeUserModal();
+        await loadUsers();
+        alert(wasEditing ? 'User updated successfully.' : 'User added successfully.');
+      } catch (error) {
+        alert(error.message || 'Unable to save user.');
+      }
+    }
+
+    async function deleteUserRow(id) {
+      if (!isCurrentUserAdmin()) return alert('Action denied. Admin access is required.');
+      const user = usersCache.find((item) => item._id === id);
+      if (!user || !confirm(`Delete user ${user.userId || id}?`)) return;
+
+      try {
+        const response = await fetch(window.apiUrl(`/api/users/${encodeURIComponent(id)}`), {
+          method: 'DELETE',
+          headers: authHeaders()
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || `Request failed (${response.status})`);
+        await loadUsers();
+        alert('User deleted successfully.');
+      } catch (error) {
+        alert(error.message || 'Unable to delete user.');
+      }
+    }
+    async function fetchLiveAttendance() {
+      if (!isCurrentUserAdmin()) return;
+      try {
+        const res = await fetch(window.apiUrl('/api/attendance/today'), { headers: authHeaders() });
+        const logs = await res.json();
+        if (!res.ok) throw new Error(logs.message || `Request failed (${res.status})`);
+
+        const tbody = document.getElementById('liveLogsTableBody');
+        if (!tbody) return;
+
+        tbody.innerHTML = '';
+        logs.forEach(log => {
+          const checkInStr = log.checkInTime || '-';
+          const checkOutStr = log.checkOutTime || 'Not checked out';
+
+          const statusBadge = log.status === 'Late'
+            ? '<span class="px-2 py-0.5 rounded text-[11px] bg-amber-500/10 text-amber-400 border border-amber-500/20">Late (មកយឺត)</span>'
+            : '<span class="px-2 py-0.5 rounded text-[11px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Present (ទាន់ម៉ោង)</span>';
+
+          tbody.innerHTML += `
+                <tr class="border-b border-slate-800/60 hover:bg-slate-900/40 transition">
+                    <td class="p-4 font-bold text-white">${log.fullName}</td>
+                    <td class="p-4 text-slate-400 font-mono">${log.userId}</td>
+                    <td class="p-4 text-slate-300">${checkInStr}</td>
+                    <td class="p-4 text-slate-300">${checkOutStr}</td>
+                    <td class="p-4">${statusBadge}</td>
+                </tr>
+            `;
+        });
+      } catch (err) {
+        console.error('Error fetching live logs:', err);
+      }
+    }
+
+    // ឱ្យវា rerun ទិន្នន័យស្វ័យប្រវត្តិរៀងរាល់ 3 វិនាទីម្តង (Real-time feel)
+    setInterval(fetchLiveAttendance, 3000);
+
+    document.addEventListener('DOMContentLoaded', () => {
+      fetchLiveAttendance();
+    });
+  </script>
+</body>
+
+</html>

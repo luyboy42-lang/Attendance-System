@@ -1,0 +1,98 @@
+body {
+  font-family: 'Inter', 'Battambang', sans-serif;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+.glass-panel {
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* កែតម្រង់រចនាសម្ព័ន្ធ html5-qrcode ឱ្យត្រូវទម្រង់ Dark Mode និង Glassmorphism */
+#reader {
+  width: 100% !important;
+  border: none !important;
+  background: transparent !important;
+}
+#reader__dashboard {
+  padding: 10px !important;
+}
+#reader__dashboard_section_csr button, 
+#reader__dashboard_section_swaplink {
+  color: #818cf8 !important;
+  background: rgba(99, 102, 241, 0.1) !important;
+  border: 1px solid rgba(99, 102, 241, 0.2) !important;
+  padding: 6px 12px !important;
+  border-radius: 8px !important;
+  font-size: 12px !important;
+  cursor: pointer;
+}
+#reader video {
+  border-radius: 1rem !important;
+  object-fit: cover !important;
+}
+
+/* Clean up html5-qrcode default UI elements */
+#html5-qrcode-button-camera-permission,
+#html5-qrcode-button-camera-start,
+#html5-qrcode-button-camera-stop {
+  background: #4f46e5 !important;
+  color: white !important;
+  border: none !important;
+  padding: 8px 16px !important;
+  border-radius: 8px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  margin-top: 10px !important;
+}
+#html5-qrcode-anchor-scan-type-change {
+  display: none !important; /* លាក់ប៊ូតុងប្តូរទៅ Scan Image File */
+}
+#reader__dashboard_section_csr span {
+  color: #94a3b8 !important;
+  font-size: 12px !important;
+}
+#reader video {
+  border-radius: 1rem !important;
+  object-fit: cover !important;
+}
+#kioskQrCanvas {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+#kioskQrCanvas img, 
+#kioskQrCanvas canvas {
+  width: 200px !important;
+  height: 200px !important;
+  display: block;
+  object-fit: contain;
+}
+
+
+/* Glassmorphism Styles */
+.glass-panel {
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}

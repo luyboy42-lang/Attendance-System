@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="km" class="h-full bg-slate-950 text-slate-100">
+<head>
+  <script src="js/api-config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User App - Attendance System</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              400: '#818cf8',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'Battambang', 'system-ui', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Battambang:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="manifest" href="manifest.json">
+</head>
+<body class="h-full flex flex-col antialiased selection:bg-brand-500 selection:text-white">
+
+  <!-- TOP HEADER / NAVBAR -->
+  <header class="glass-panel sticky top-0 z-40 border-b border-slate-800/80 px-4 py-3">
+    <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-3">
+      
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-400 flex items-center justify-center shadow-lg shadow-brand-500/20">
+          <i data-lucide="qr-code" class="w-6 h-6 text-white"></i>
+        </div>
+        <div>
+          <h1 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+            <span class="lang-km">ប្រព័ន្ធកត់ត្រាវត្តមាន</span>
+            <span class="lang-en hidden">Smart Attendance</span>
+            <span class="text-xs font-normal px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-300 border border-brand-500/30">PWA v2.4</span>
+          </h1>
+          <p class="text-xs text-slate-400">
+            <span class="lang-km">ប្រព័ន្ធគ្រប់គ្រងវត្តមានឆ្លាតវៃ (FRD Compliant)</span>
+            <span class="lang-en hidden">Universal Attendance Tracking Platform</span>
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-2 sm:space-x-3">
+        <button onclick="toggleLang()" class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-xs font-medium text-slate-300 border border-slate-800 flex items-center gap-1.5 transition">
+          <i data-lucide="globe" class="w-4 h-4 text-brand-400"></i>
+          <span id="langLabel">ខ្មែរ / EN</span>
+        </button>
+
+        <select onchange="window.location.href=this.value" class="bg-slate-900 border border-slate-800 text-xs text-slate-200 rounded-lg px-3 py-1.5 font-medium focus:ring-2 focus:ring-brand-500 outline-none cursor-pointer">
+          <option value="index.html" selected>📱 App: User (Student/Staff)</option>
+          <option value="kiosk.html">🖥️ Display: Gate Dynamic QR Kiosk</option>
+          <option value="admin.html">📊 Portal: Admin Management</option>
+        </select>
+
+        <button id="authBtnToggle" onclick="openAuthModal()" class="px-3.5 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-500 text-xs font-semibold text-white shadow-md transition flex items-center gap-1.5">
+          <i data-lucide="log-in" class="w-4 h-4"></i>
+          <span class="lang-km" id="authBtnText">ចូល / ចុះឈ្មោះ</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- MAIN WRAPPER -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
+
+    <!-- PROFILE HEADER & DYNAMIC STATUS CARD -->
+    <div class="glass-panel rounded-2xl p-6 shadow-2xl border border-slate-800/80">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        
+        <!-- User Info -->
+        <div class="flex items-center space-x-4">
+          <div class="relative">
+            <div id="userAvatar" class="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold shadow-lg">
+              JD
+            </div>
+            <span class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-slate-950"></span>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 id="displayFullName" class="text-lg sm:text-xl font-bold text-white">John Doe (សុក មករា)</h2>
+              <span id="displayRole" class="text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 font-medium">Staff</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-1">
+              ID: <strong id="displayUserId" class="text-slate-200">EMP-8842</strong> <span id="displayDept" class="text-slate-300 ml-2">IT Dept</span>
+            </p>
+          </div>
+        </div>
+
+        <!-- Dynamic Status & Timestamp Card -->
+        <div class="flex flex-col sm:flex-row items-start sm:items-center gap-6 bg-slate-900/90 p-4 rounded-xl border border-slate-800 shadow-inner">
+          <div>
+            <span class="text-xs text-slate-400 font-medium block mb-1.5">ស្ថានភាពថ្ងៃនេះ:</span>
+            <div class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 mr-2 animate-pulse"></span>
+              <span>ចូលការងារ (Working)</span>
+            </div>
+          </div>
+
+          <div class="border-t sm:border-t-0 sm:border-l border-slate-800 pt-3 sm:pt-0 sm:pl-4 text-xs space-y-1">
+            <div class="text-slate-400">
+              ម៉ោងចូល: <strong class="text-white font-mono ml-1">08:00 AM</strong>
+            </div>
+            <div class="text-slate-400">
+              ម៉ោងចេញ: <strong class="text-slate-500 font-mono ml-1">06:00 PM</strong>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- CAMERA SCANNER CARD -->
+    <div class="glass-panel rounded-2xl p-6 shadow-2xl border border-slate-800/80">
+      
+      <div class="flex justify-between items-start sm:items-center mb-5 gap-3">
+        <div>
+          <h3 class="text-base font-semibold text-white flex items-center gap-2">
+            <i data-lucide="camera" class="w-5 h-5 text-brand-400"></i>
+            <span>ម៉ាស៊ីន Scan កាមេរ៉ា Web Camera</span>
+          </h3>
+          <p class="text-xs text-slate-400 mt-1">សូមតម្រង់កាមេរ៉ាទៅកាន់ QR Code លើទ្វារស្ថាប័ន</p>
+        </div>
+
+        <div class="px-3 py-1 rounded-full bg-slate-900/90 border border-slate-800 text-[11px] font-medium text-amber-400 flex items-center gap-1.5 shadow-inner">
+          <i data-lucide="map-pin" class="w-3.5 h-3.5"></i>
+          <span>GPS Simulation Active</span>
+        </div>
+      </div>
+
+      <!-- Video Scanner Container -->
+      <div class="relative w-full h-72 sm:h-96 bg-slate-950 rounded-2xl overflow-hidden border border-slate-800 flex items-center justify-center shadow-inner">
+        
+        <!-- Camera Idle State Overlay -->
+        <div id="simulatedCamFeed" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/95 p-6 text-center z-10 transition-all duration-300 pointer-events-none">
+          <div class="w-56 h-56 border-2 border-dashed border-indigo-500/40 rounded-3xl flex items-center justify-center relative overflow-hidden bg-gradient-to-b from-indigo-500/5 to-purple-500/5 shadow-2xl">
+            <div class="absolute inset-0 bg-gradient-to-b from-brand-500/10 via-transparent to-brand-500/15 animate-pulse"></div>
+            <div class="w-full h-0.5 bg-brand-400 shadow-[0_0_20px_#6366f1] animate-bounce"></div>
+            <i data-lucide="qr-code" class="w-20 h-20 text-slate-600 opacity-50"></i>
+          </div>
+          <p id="camStatusMsg" class="text-xs text-slate-400 mt-4 font-medium">Camera idle. Click button below to activate scanner.</p>
+        </div>
+
+        <!-- Live Video Element -->
+        <div id="reader" class="w-full h-full flex items-center justify-center"></div>
+
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <button id="scanCheckinBtn" onclick="activateCamera('checkin')" class="py-3.5 px-6 bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white font-semibold rounded-xl shadow-lg shadow-emerald-600/20 transition flex items-center justify-center gap-2 text-sm cursor-pointer">
+          <i data-lucide="log-in" class="w-5 h-5"></i>
+          <span>Scan Check-In (ចូល)</span>
+        </button>
+        <button id="scanCheckoutBtn" onclick="activateCamera('checkout')" class="py-3.5 px-6 bg-brand-600 hover:bg-brand-500 active:scale-[0.99] text-white font-semibold rounded-xl shadow-lg shadow-brand-600/20 transition flex items-center justify-center gap-2 text-sm cursor-pointer">
+          <i data-lucide="log-out" class="w-5 h-5"></i>
+          <span>Scan Check-Out (ចេញ)</span>
+        </button>
+      </div>
+
+    </div>
+
+    <!-- DAILY HOURS SUMMARY & RECENT LOGS -->
+    <div class="glass-panel rounded-2xl p-6 shadow-2xl border border-slate-800/80">
+      <h3 class="text-base font-semibold text-white mb-4 flex items-center gap-2">
+        <i data-lucide="clock" class="w-5 h-5 text-purple-400"></i>
+        <span class="lang-km">សង្ខេបម៉ោងធ្វើការប្រចាំថ្ងៃ</span>
+        <span class="lang-en hidden">Daily Work Hours Summary</span>
+      </h3>
+
+      <div class="bg-slate-900/80 rounded-2xl p-6 border border-slate-800/80 text-center shadow-inner max-w-xl mx-auto my-2">
+        <span class="text-xs text-slate-400 uppercase tracking-widest font-semibold block mb-1">TODAY'S WORK HOURS</span>
+        <div id="totalHoursCounter" class="text-4xl font-extrabold text-white my-1">—</div>
+        <p id="todayAttendanceTimes" class="text-xs text-slate-400 mt-2">Check-In: — &nbsp;·&nbsp; Check-Out: —</p>
+      </div>
+
+      <div class="mt-6">
+        <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">RECENT LOGS</h4>
+        <div id="recentLogs" class="space-y-2">
+          <p class="text-xs text-slate-500">Sign in to view your attendance records.</p>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- AUTH / REGISTRATION & LOGIN MODAL -->
+  <div id="authModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div class="glass-panel max-w-md w-full rounded-2xl p-6 border border-slate-800 shadow-2xl relative">
+      
+      <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white transition p-1">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <!-- Auth Tabs Header -->
+      <div class="flex border-b border-slate-800/80 mb-5 space-x-6">
+        <button onclick="switchAuthTab('login')" id="authTabBtnLogin" class="pb-3 text-sm font-semibold text-brand-400 border-b-2 border-brand-500">
+          ចូលប្រើប្រព័ន្ធ
+        </button>
+        <button onclick="switchAuthTab('register')" id="authTabBtnRegister" class="pb-3 text-sm font-medium text-slate-400 hover:text-slate-200 border-b-2 border-transparent">
+          ចុះឈ្មោះគណនីថ្មី
+        </button>
+      </div>
+
+      <!-- Form 1: Login Form -->
+      <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1.5">User ID (អត្តលេខ)</label>
+          <input type="text" id="loginUserId" placeholder="EMP-1020" required class="w-full bg-slate-900/90 border border-slate-800 text-xs text-white rounded-xl p-3 focus:ring-2 focus:ring-brand-500 outline-none transition">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1.5">Password (ពាក្យសម្ងាត់)</label>
+          <input type="password" id="loginPassword" placeholder="••••••••" required class="w-full bg-slate-900/90 border border-slate-800 text-xs text-white rounded-xl p-3 focus:ring-2 focus:ring-brand-500 outline-none transition">
+        </div>
+        <button type="submit" class="w-full py-3 bg-brand-600 hover:bg-brand-500 text-white font-semibold rounded-xl text-xs shadow-lg shadow-brand-600/20 transition mt-2">
+          Sign In
+        </button>
+      </form>
+
+      <!-- Form 2: Register Form -->
+      <form id="registerForm" onsubmit="handleRegister(event)" class="space-y-4 hidden">
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1.5">Full Name (ឈ្មោះពេញ)</label>
+          <input type="text" id="regFullName" placeholder="Sok Dara" required class="w-full bg-slate-900/90 border border-slate-800 text-xs text-white rounded-xl p-3 focus:ring-2 focus:ring-brand-500 outline-none transition">
+        </div>
+        
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1.5">Email Address (អ៊ីម៉ែល)</label>
+          <input type="email" id="regEmail" placeholder="sok.dara@example.com" required class="w-full bg-slate-900/90 border border-slate-800 text-xs text-white rounded-xl p-3 focus:ring-2 focus:ring-brand-500 outline-none transition">
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1.5">User ID (អត្តលេខ - Unique)</label>
+          <input type="text" id="regUserId" placeholder="EMP-1020" required class="w-full bg-slate-900/90 border border-slate-800 text-xs text-white rounded-xl p-3 focus:ring-2 focus:ring-brand-500 outline-none transition">
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1.5">Department / Class</label>
+          <select id="regDepartment" class="w-full bg-slate-900/90 border border-slate-800 text-xs text-white rounded-xl p-3 focus:ring-2 focus:ring-brand-500 outline-none transition cursor-pointer">
+            <option value="IT Department">IT Department</option>
+            <option value="HR Department">HR Department</option>
+            <option value="Engineering">Engineering</option>
+            <option value="Management">Management</option>
+            <option value="Class A1">Class A1</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1.5">Password</label>
+          <input type="password" id="regPassword" placeholder="••••••••" required class="w-full bg-slate-900/90 border border-slate-800 text-xs text-white rounded-xl p-3 focus:ring-2 focus:ring-brand-500 outline-none transition">
+        </div>
+        <button type="submit" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl text-xs shadow-lg shadow-emerald-600/20 transition mt-2">
+          Create Account
+        </button>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- ប៊ូតុងជ្រើសរើសរូបភាព QR ពីក្នុង Folder -->
+<div class="mt-4 flex flex-col items-center">
+  <label for="qrFileInput" class="cursor-pointer px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition flex items-center gap-2">
+    <i data-lucide="upload" class="w-4 h-4 text-brand-400"></i>
+    <span>ទាញយករូបភាព QR Code ពីក្នុង Folder</span>
+  </label>
+  <input type="file" id="qrFileInput" accept="image/*" class="hidden" onchange="decodeQRFromFile(event)">
+</div>
+
+<script>// ឧទាហរណ៍កូដ JavaScript នៅខាង Frontend
+async function fetchRealUsers() {
+    const token = localStorage.getItem('token');
+    let currentUser = {};
+    try { currentUser = JSON.parse(localStorage.getItem('user') || '{}'); } catch (_) {}
+    if (!token || currentUser.role !== 'admin') return;
+    try {
+        const response = await fetch(window.apiUrl('/api/users'), {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`, // បើមានប្រើប្រាស់ Token
+                'Content-Type': 'application/json'
+            }
+        });
+        const result = await response.json();
+        
+        if (response.ok && Array.isArray(result)) renderUserTable(result);
+    } catch (error) {
+        console.error('Error fetching users:', error);
+    }
+}
+
+function renderUserTable(users) {
+    const tableBody = document.getElementById('user-table-body');
+    tableBody.innerHTML = ''; // សម្អាតទិន្នន័យចាស់ ឬទិន្នន័យ Demo ចេញ
+
+    users.forEach((user, index) => {
+        const row = `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${user.name || user.username}</td>
+                <td>${user.email}</td>
+                <td>${user.role || 'User'}</td>
+            </tr>
+        `;
+        tableBody.innerHTML += row;
+    });
+}
+
+//ហៅហ្វังก์ชันពេលទំព័រត្រូវបានផ្ទុក
+document.addEventListener('DOMContentLoaded', fetchRealUsers);</script>
+
+
+  <script src="js/scanner.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
