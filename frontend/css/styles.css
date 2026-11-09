@@ -24,6 +24,48 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+.scan-frame {
+  position: relative;
+  width: min(72vw, 20rem);
+  aspect-ratio: 1;
+  border-radius: 1.5rem;
+  background: radial-gradient(ellipse at center, rgba(79,70,229,.10), rgba(2,6,23,.08) 68%);
+  box-shadow: 0 0 60px rgba(79,70,229,.08), inset 0 0 36px rgba(99,102,241,.06);
+}
+.scan-frame__corners {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(#818cf8,#818cf8) left top / 3.25rem 4px no-repeat,
+    linear-gradient(#818cf8,#818cf8) left top / 4px 3.25rem no-repeat,
+    linear-gradient(#818cf8,#818cf8) right top / 3.25rem 4px no-repeat,
+    linear-gradient(#818cf8,#818cf8) right top / 4px 3.25rem no-repeat,
+    linear-gradient(#818cf8,#818cf8) left bottom / 3.25rem 4px no-repeat,
+    linear-gradient(#818cf8,#818cf8) left bottom / 4px 3.25rem no-repeat,
+    linear-gradient(#818cf8,#818cf8) right bottom / 3.25rem 4px no-repeat,
+    linear-gradient(#818cf8,#818cf8) right bottom / 4px 3.25rem no-repeat;
+  filter: drop-shadow(0 0 7px rgba(129,140,248,.55));
+}
+.scan-frame__line {
+  position: absolute;
+  z-index: 1;
+  left: 8%; right: 8%; top: 10%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #a5b4fc 18%, #c7d2fe 50%, #a5b4fc 82%, transparent);
+  box-shadow: 0 0 14px 2px rgba(129,140,248,.55);
+  animation: scan-sweep 2.8s ease-in-out infinite alternate;
+}
+.scan-frame__target {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: rgba(148,163,184,.28);
+}
+@keyframes scan-sweep { to { top: 88%; } }
+@media (prefers-reduced-motion: reduce) { .scan-frame__line { animation: none; top: 50%; } }
+
 /* កែតម្រង់រចនាសម្ព័ន្ធ html5-qrcode ឱ្យត្រូវទម្រង់ Dark Mode និង Glassmorphism */
 #reader {
   width: 100% !important;
@@ -47,6 +89,12 @@ body {
   border-radius: 1rem !important;
   object-fit: cover !important;
 }
+#reader video { width: 100% !important; height: 100% !important; }
+#reader__scan_region { min-height: 100% !important; }
+#reader__scan_region img { display: none !important; }
+#scanResult[data-state="success"] { color:#a7f3d0; background:rgba(5,150,105,.14); border-color:rgba(52,211,153,.35); }
+#scanResult[data-state="error"] { color:#fecaca; background:rgba(220,38,38,.14); border-color:rgba(248,113,113,.35); }
+#scanResult[data-state="location"] { color:#fde68a; background:rgba(217,119,6,.14); border-color:rgba(251,191,36,.35); }
 
 /* Clean up html5-qrcode default UI elements */
 #html5-qrcode-button-camera-permission,

@@ -90,7 +90,21 @@ function renderAttendanceSummary(records) {
           timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
         }).format(new Date()).split(':')[1]) : null);
     const elapsed = start !== null && end !== null ? Math.max(0, end - start) : null;
-    hours.textContent = elapsed === null ? '0.0 hrs' : `${(elapsed / 60).toFixed(1)} hrs`;
+    if (elapsed === null) {
+      hours.textContent = 'Not started';
+      hours.classList.remove('text-4xl', 'text-3xl', 'text-2xl');
+      hours.classList.add('text-2xl');
+    } else if (elapsed < 60) {
+      hours.textContent = elapsed === 0 ? 'Under 1 min' : `${elapsed} min`;
+      hours.classList.remove('text-4xl', 'text-3xl', 'text-2xl');
+      hours.classList.add('text-3xl');
+    } else {
+      const wholeHours = Math.floor(elapsed / 60);
+      const remainingMinutes = elapsed % 60;
+      hours.textContent = remainingMinutes ? `${wholeHours} hr ${remainingMinutes} min` : `${wholeHours} hr`;
+      hours.classList.remove('text-4xl', 'text-3xl', 'text-2xl');
+      hours.classList.add('text-3xl');
+    }
   }
   if (times) {
     times.textContent = `Check-In: ${formatAttendanceTime(todayRecord?.checkInTime)} · Check-Out: ${formatAttendanceTime(todayRecord?.checkOutTime)}`;
@@ -99,14 +113,17 @@ function renderAttendanceSummary(records) {
   const container = document.getElementById('recentLogs');
   if (!container) return;
   container.replaceChildren();
-  if (!records.length) {
+  // Show only today's attendance so a previous day's scan cannot be mistaken
+  // for today's check-in or check-out.
+  const todayRecords = records.filter((record) => record.date === today);
+  if (!todayRecords.length) {
     const empty = document.createElement('p');
     empty.className = 'text-xs text-slate-500';
-    empty.textContent = 'No attendance records yet.';
+    empty.textContent = 'No scans recorded today.';
     container.append(empty);
     return;
   }
-  records.slice(0, 5).forEach((record) => {
+  todayRecords.forEach((record) => {
     const row = document.createElement('div');
     row.className = 'p-3 rounded-xl bg-slate-900/60 border border-slate-800 flex justify-between items-center text-xs';
     const details = document.createElement('div');
@@ -127,9 +144,15 @@ function renderAttendanceSummary(records) {
 
 // មុខងារអាប់ដេតព័ត៌មាន Profile លើអេក្រង់ UI
 function updateUserUI(user) {
-  if (user.fullName) {
+  const fullName = String(user.fullName || user.name || '').trim();
+  if (fullName) {
     const el = document.getElementById('displayFullName');
-    if (el) el.innerText = user.fullName;
+    if (el) el.innerText = fullName;
+    const avatar = document.getElementById('userAvatar');
+    if (avatar) {
+      const initials = fullName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => Array.from(part)[0]).join('');
+      avatar.textContent = initials.toLocaleUpperCase();
+    }
   }
   if (user.userId) {
     const el = document.getElementById('displayUserId');
@@ -157,6 +180,8 @@ function openAuthModal() {
 }
 
 function closeAuthModal() {
+  // Authentication is required before any attendance features can be used.
+  if (!localStorage.getItem('token')) return;
   const modal = document.getElementById('authModal');
   if (modal) modal.classList.add('hidden');
 }
@@ -195,10 +220,14 @@ async function handleLogin(e) {
     const data = await res.json();
     
     if (res.ok) {
+      if (!data.token) {
+        alert('ការចូលប្រើមិនបានជោគជ័យទេ៖ Server មិនបានផ្ញើ authentication token មកវិញ។');
+        return;
+      }
       alert('ចូលប្រព័ន្ធជោគជ័យ!');
       
       // រក្សាទុក Token និងព័ត៌មាន User ទុកក្នុង localStorage
-      localStorage.setItem('token', data.token || 'demo-token');
+      localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user || { userId, fullName: userId, department: 'IT Dept', role: 'Staff' }));
       
       if (typeof closeAuthModal === 'function') {
@@ -231,8 +260,21 @@ async function handleRegister(e) {
     });
     const data = await res.json();
     if (res.ok) {
-      alert('បង្កើតគណនីជោគជ័យ! សូមចូលប្រព័ន្ធ');
-      switchAuthTab('login');
+      if (!data.token) {
+        alert('ការចុះឈ្មោះបានជោគជ័យ ប៉ុន្តែ Server មិនបានផ្ញើ authentication token មកវិញទេ។ សូមចូលប្រើប្រព័ន្ធ។');
+        switchAuthTab('login');
+        return;
+      }
+
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user || {
+        userId,
+        fullName,
+        department,
+        role: data.role || 'employee'
+      }));
+      alert('ចុះឈ្មោះ និងចូលប្រព័ន្ធជោគជ័យ!');
+      location.reload();
     } else {
       alert(data.message || 'ការចុះឈ្មោះបរាជ័យ!');
     }

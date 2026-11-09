@@ -1,9 +1,42 @@
-// Scanner helper module
+﻿// Scanner helper module
 let html5QrCode = null;
-let currentScanType = 'checkin'; // កំណត់ប្រភេទស្កែនបច្ចុប្បន្ន
+let scanRequestPending = false;
+function showScanResult(state, message) {
+    const el = document.getElementById('scanResult');
+    if (!el) return;
+    el.dataset.state = state;
+    el.textContent = message;
+    el.classList.remove('hidden');
+}
+let currentScanType = 'checkin'; // áž€áŸ†ážŽážáŸ‹áž”áŸ’ážšáž—áŸáž‘ážŸáŸ’áž€áŸ‚áž“áž”áž…áŸ’áž…áž»áž”áŸ’áž”áž“áŸ’áž“
 
 function activateCamera(type) {
-    currentScanType = type; // រក្សាទុកប្រភេទស្កែន (checkin ឬ checkout)
+    if (!localStorage.getItem('token')) {
+        if (typeof openAuthModal === 'function') openAuthModal();
+        return;
+    }
+    currentScanType = type; // ážšáž€áŸ’ážŸáž¶áž‘áž»áž€áž”áŸ’ážšáž—áŸáž‘ážŸáŸ’áž€áŸ‚áž“ (checkin áž¬ checkout)
+    if (!navigator.geolocation) {
+        showScanResult('location', 'សូមបើក GPS និងអនុញ្ញាតសេវាទីតាំង ដើម្បីស្កេនវត្តមាន។');
+        return;
+    }
+    showScanResult('location', 'កំពុងពិនិត្យ GPS…');
+    navigator.geolocation.getCurrentPosition(
+        () => startAttendanceCamera(),
+        (error) => {
+            console.warn('GPS check failed:', error);
+            const message = error.code === 1
+                ? 'សូមអនុញ្ញាតសេវាទីតាំង (Location) ក្នុង Browser ហើយបើក GPS រួចព្យាយាមម្ដងទៀត។'
+                : error.code === 2
+                    ? 'រកទីតាំងមិនឃើញទេ។ សូមបើក GPS/Location លើឧបករណ៍ ហើយព្យាយាមម្ដងទៀត។'
+                    : 'ទីតាំងមិនឆ្លើយតប។ សូមបើក GPS ហើយព្យាយាមម្ដងទៀត។';
+            showScanResult('location', message);
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+}
+
+function startAttendanceCamera() {
     const feed = document.getElementById('simulatedCamFeed');
     if (feed) {
         feed.style.opacity = '0';
@@ -16,8 +49,10 @@ function activateCamera(type) {
 
     html5QrCode.start(
         { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 250, height: 250 } },
+        { fps: 10, qrbox: (width, height) => { const size = Math.min(420, Math.floor(Math.min(width, height) * 0.78)); return { width: size, height: size }; } },
         (decodedText, decodedResult) => {
+            if (scanRequestPending) return;
+            scanRequestPending = true;
             handleScanSuccess(decodedText, currentScanType);
         },
         (errorMessage) => {
@@ -25,7 +60,7 @@ function activateCamera(type) {
         }
     ).catch(err => {
         console.error("Camera start failed.", err);
-        alert("មិនអាចបើកកាមេរ៉ាបានទេ! សូមពិនិត្យ Permission កាមេរ៉ារបស់ Browser");
+        showScanResult('error', 'មិនអាចបើកកាមេរ៉ាបានទេ។ សូមអនុញ្ញាត Camera permission ហើយព្យាយាមម្ដងទៀត។');
     });
 }
 
@@ -37,7 +72,7 @@ function handleScanSuccess(qrData, scanType) {
                 feed.style.display = 'flex';
                 setTimeout(() => { feed.style.opacity = '1'; }, 50);
             }
-            // ហៅមុខងារបញ្ជូនទិន្នន័យទៅកាន់ Server ព្រមទាំងផ្ញើ scanType ទៅជាមួយ
+            // áž áŸ…áž˜áž»ážáž„áž¶ážšáž”áž‰áŸ’áž‡áž¼áž“áž‘áž·áž“áŸ’áž“áž“áŸáž™áž‘áŸ…áž€áž¶áž“áŸ‹ Server áž–áŸ’ážšáž˜áž‘áž¶áŸ†áž„áž•áŸ’áž‰áž¾ scanType áž‘áŸ…áž‡áž¶áž˜áž½áž™
             handleAttendanceScan(qrData, scanType);
         }).catch(err => console.error(err));
     } else {
@@ -45,7 +80,7 @@ function handleScanSuccess(qrData, scanType) {
     }
 }
 
-// មុខងារអាន QR ពី File ជាមួយការកំណត់ប្រភេទ (Default គឺ checkin ឬអាចទាញពី UI បាន)
+// áž˜áž»ážáž„áž¶ážšáž¢áž¶áž“ QR áž–áž¸ File áž‡áž¶áž˜áž½áž™áž€áž¶ážšáž€áŸ†ážŽážáŸ‹áž”áŸ’ážšáž—áŸáž‘ (Default áž‚ážº checkin áž¬áž¢áž¶áž…áž‘áž¶áž‰áž–áž¸ UI áž”áž¶áž“)
 function decodeQRFromFile(event, type = 'checkin') {
     const file = event.target.files[0];
     if (!file) return;
@@ -66,13 +101,13 @@ function decodeQRFromFile(event, type = 'checkin') {
                 const code = jsQR(imageData.data, imageData.width, imageData.height);
                 if (code) {
                     console.log('QR Code Data Found:', code.data);
-                    // ផ្ញើ code.data និង type ទៅកាន់ handleAttendanceScan
+                    // áž•áŸ’áž‰áž¾ code.data áž“áž·áž„ type áž‘áŸ…áž€áž¶áž“áŸ‹ handleAttendanceScan
                     handleAttendanceScan(code.data, type);
                 } else {
-                    alert('រកមិនឃើញ QR Code ក្នុងរូបភាពនេះទេ សូមព្យាយាមម្តងទៀត!');
+                    alert('ážšáž€áž˜áž·áž“ážƒáž¾áž‰ QR Code áž€áŸ’áž“áž»áž„ážšáž¼áž”áž—áž¶áž–áž“áŸáŸ‡áž‘áŸ ážŸáž¼áž˜áž–áŸ’áž™áž¶áž™áž¶áž˜áž˜áŸ’ážáž„áž‘áŸ€áž!');
                 }
             } else {
-                alert('กรุณាបញ្ចូល jsQR library ក្នុង HTML របស់អ្នកជាមុនសិន!');
+                alert('à¸à¸£à¸¸à¸“áž¶áž”áž‰áŸ’áž…áž¼áž› jsQR library áž€áŸ’áž“áž»áž„ HTML ážšáž”ážŸáŸ‹áž¢áŸ’áž“áž€áž‡áž¶áž˜áž»áž“ážŸáž·áž“!');
             }
         };
         img.src = e.target.result;
@@ -80,12 +115,12 @@ function decodeQRFromFile(event, type = 'checkin') {
     reader.readAsDataURL(file);
 }
 
-// មុខងារផ្ញើទិន្នន័យទៅកាន់ Backend API
+// áž˜áž»ážáž„áž¶ážšáž•áŸ’áž‰áž¾áž‘áž·áž“áŸ’áž“áž“áŸáž™áž‘áŸ…áž€áž¶áž“áŸ‹ Backend API
 async function handleAttendanceScan(qrCodeData, type = 'checkin') {
   try {
-    // ពិនិត្យម៉ោងនៅฝั่ง Client ជាមុនសិន
+    // áž–áž·áž“áž·ážáŸ’áž™áž˜áŸ‰áŸ„áž„áž“áŸ…à¸à¸±à¹ˆà¸‡ Client áž‡áž¶áž˜áž»áž“ážŸáž·áž“
     if (!navigator.geolocation) {
-      alert('This device does not support location services. Location is required to record attendance.');
+      showScanResult('location', 'ឧបករណ៍នេះមិនគាំទ្រ GPS ទេ។ មិនអាចកត់ត្រាវត្តមានបានឡើយ។'); scanRequestPending = false;
       return;
     }
     const position = await new Promise((resolve, reject) => {
@@ -96,9 +131,11 @@ async function handleAttendanceScan(qrCodeData, type = 'checkin') {
       });
     }).catch((error) => {
       const message = error.code === 1
-        ? 'Location permission is required to record attendance. Please allow location access and try again.'
-        : 'Could not get an accurate location. Please enable GPS and try again.';
-      alert(message);
+        ? 'សូមអនុញ្ញាតសេវាទីតាំង (Location) ក្នុង Browser ដើម្បីកត់ត្រាវត្តមាន។'
+        : error.code === 2
+          ? 'រកទីតាំងមិនឃើញទេ។ សូមបើក GPS/Location លើឧបករណ៍ ហើយព្យាយាមម្ដងទៀត។'
+          : 'ទីតាំងមិនឆ្លើយតប។ សូមបើក GPS ហើយព្យាយាមម្ដងទៀត។';
+      showScanResult('location', message); scanRequestPending = false;
       return null;
     });
     if (!position) return;
@@ -108,7 +145,7 @@ async function handleAttendanceScan(qrCodeData, type = 'checkin') {
       ? window.apiUrl('/api/attendance/checkin')
       : window.apiUrl('/api/attendance/checkout');
     
-    const token = localStorage.getItem('token'); // ទាញយក Token របស់អ្នក
+    const token = localStorage.getItem('token'); // áž‘áž¶áž‰áž™áž€ Token ážšáž”ážŸáŸ‹áž¢áŸ’áž“áž€
 
     const response = await fetch(endpoint, {
       method: type === 'checkin' ? 'POST' : 'PUT',
@@ -126,14 +163,14 @@ async function handleAttendanceScan(qrCodeData, type = 'checkin') {
 
     const data = await response.json();
     if (!response.ok) {
-      alert(data.message || 'មានបញ្ហាក្នុងការស្កែន!');
+      const message = data.message || 'ស្កេនមិនបានជោគជ័យទេ។'; const locationIssue = /location|gps|geofence|distance|meter|ទីតាំង|ចម្ងាយ/i.test(message); showScanResult(locationIssue ? 'location' : 'error', locationIssue ? `ខុសទីតាំង GPS៖ ${message}` : `ស្កេនមិនបាន៖ ${message}`); scanRequestPending = false;
     } else {
       const recordedTime = type === 'checkin' ? data.checkInTime : data.checkOutTime;
-      alert(`ស្កែន (${type.toUpperCase()}) ជោគជ័យ!\nម៉ោងកត់ត្រា៖ ${recordedTime}`);
-      location.reload(); // ផ្ទុកទំព័រឡើងវិញដើម្បីអាប់ដេតតារាងបង្ហាញម៉ោងជាក់ស្តែង
+      showScanResult('success', `ស្កេនបានជោគជ័យ! ${type === 'checkin' ? 'ចូល' : 'ចេញ'} ម៉ោង ${recordedTime || 'បានកត់ត្រា'}`); scanRequestPending = false;
+      setTimeout(() => location.reload(), 1800);
     }
   } catch (err) {
     console.error('Error handling scan:', err);
-    alert('មិនអាចតភ្ជាប់ទៅកាន់ Server បានទេ!');
+    showScanResult('error', 'មិនអាចភ្ជាប់ទៅ Server បានទេ។ សូមព្យាយាមម្ដងទៀត។'); scanRequestPending = false;
   }
 }

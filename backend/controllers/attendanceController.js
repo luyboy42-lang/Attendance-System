@@ -168,16 +168,151 @@ exports.getTodayAttendance = async (_req, res) => {
   try {
     const today = getBangkokDate(new Date());
     const [records, users] = await Promise.all([Attendance.findForDate(today), User.findAll()]);
-    const usersById = new Map(users.map((user) => [user._id, user]));
+    const usersById = new Map(users.map((user) => [String(user._id), user]));
+    const usersByUserId = new Map(users.filter((user) => user.userId).map((user) => [String(user.userId), user]));
     const logs = records.map((record) => {
-      const user = usersById.get(record.user) || {};
+      const recordUser = String(record.user || '');
+      const user = usersById.get(recordUser) || usersByUserId.get(String(record.userId || recordUser)) || {};
       return {
         ...record,
         fullName: user.name || user.fullName || 'Unknown user',
-        userId: user.userId || record.user
+        userId: user.userId || record.userId || recordUser
       };
     });
-    return res.json(logs);
+    return res.set('Cache-Control', 'no-store').json(logs);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getMonthlyAttendance = async (req, res) => {
+  const month = String(req.query.month || '');
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
+    return res.status(400).json({ message: 'Month must use YYYY-MM format.' });
+  }
+  try {
+    const [records, users] = await Promise.all([Attendance.findForMonth(month), User.findAll()]);
+    const usersById = new Map(users.map((user) => [String(user._id), user]));
+    const usersByUserId = new Map(users.filter((user) => user.userId).map((user) => [String(user.userId), user]));
+    const logs = records.map((record) => {
+      const recordUser = String(record.user || '');
+      const user = usersById.get(recordUser) || usersByUserId.get(String(record.userId || recordUser)) || {};
+      return {
+        ...record,
+        fullName: user.name || user.fullName || 'Unknown user',
+        userId: user.userId || record.userId || recordUser
+      };
+    });
+    return res.set('Cache-Control', 'no-store').json(logs);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+const countWeekdays = (startDate, endDate) => {
+  let count = 0;
+  const cursor = new Date(`${startDate}T00:00:00Z`);
+  const end = new Date(`${endDate}T00:00:00Z`);
+  while (cursor <= end) {
+    const day = cursor.getUTCDay();
+    if (day !== 0 && day !== 6) count += 1;
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return count;
+};
+
+const minutesAfterMidnight = (value) => {
+  const match = String(value || '').match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?/i);
+  if (!match) return null;
+  let hour = Number(match[1]);
+  if (match[4]) hour = (hour % 12) + (match[4].toUpperCase() === 'PM' ? 12 : 0);
+  return hour * 60 + Number(match[2]) + Number(match[3] || 0) / 60;
+};
+
+exports.getAttendanceAnalytics = async (req, res) => {
+  const period = String(req.query.period || 'month');
+  const value = String(req.query.value || '');
+  const valid = period === 'month' ? /^\d{4}-(0[1-9]|1[0-2])$/.test(value)
+    : period === 'year' ? /^\d{4}$/.test(value) : false;
+  if (!valid) return res.status(400).json({ message: 'Choose a valid month or year.' });
+  try {
+    const isAdmin = req.user.role === 'admin';
+    const [users, records] = await Promise.all([
+      isAdmin ? User.findAll() : User.findById(req.user.id).then((user) => user ? [user] : []),
+      period === 'month' ? Attendance.findForMonth(value) : Attendance.findForYear(value)
+    ]);
+    const today = getBangkokDate(new Date());
+    const rangeStart = period === 'month' ? `${value}-01` : `${value}-01-01`;
+    let rangeEnd = `${value}-12-31`;
+    if (period === 'month') {
+      const monthEnd = new Date(`${value}-01T00:00:00Z`);
+      monthEnd.setUTCMonth(monthEnd.getUTCMonth() + 1, 0);
+      rangeEnd = monthEnd.toISOString().slice(0, 10);
+    }
+    const throughToday = rangeEnd > today ? today : rangeEnd;
+    let expectedWorkdays = throughToday < rangeStart ? 0 : countWeekdays(rangeStart, throughToday);
+    // Do not count today's still-open workday as an absence.
+    if (throughToday === today) {
+      const localTime = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+      }).format(new Date());
+      const [hour, minute] = localTime.split(':').map(Number);
+      const todayWeekday = new Date(`${today}T00:00:00Z`).getUTCDay();
+      if (hour * 60 + minute < 18 * 60 && todayWeekday !== 0 && todayWeekday !== 6) {
+        expectedWorkdays = Math.max(0, expectedWorkdays - 1);
+      }
+    }
+    const logsByUser = new Map();
+    records.filter((record) => record.date <= throughToday).forEach((record) => {
+      const key = String(record.user || '');
+      if (!logsByUser.has(key)) logsByUser.set(key, []);
+      logsByUser.get(key).push(record);
+    });
+    const results = users.filter((user) => isAdmin ? user.role !== 'admin' : String(user._id) === String(req.user.id)).map((user) => {
+      const logs = logsByUser.get(String(user._id)) || logsByUser.get(String(user.userId)) || [];
+      const createdDate = user.createdAt && !Number.isNaN(new Date(user.createdAt).getTime())
+        ? getBangkokDate(new Date(user.createdAt)) : rangeStart;
+      const userPeriodStart = createdDate > rangeStart ? createdDate : rangeStart;
+      let userExpectedWorkdays = throughToday < userPeriodStart ? 0 : countWeekdays(userPeriodStart, throughToday);
+      if (throughToday === today && userPeriodStart <= today) {
+        const localTime = new Intl.DateTimeFormat('en-GB', {
+          timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+        }).format(new Date());
+        const [hour, minute] = localTime.split(':').map(Number);
+        const weekday = new Date(`${today}T00:00:00Z`).getUTCDay();
+        if (hour * 60 + minute < 18 * 60 && weekday !== 0 && weekday !== 6) {
+          userExpectedWorkdays = Math.max(0, userExpectedWorkdays - 1);
+        }
+      }
+      let present = 0;
+      let late = 0;
+      let countedWeekdayScans = 0;
+      const seenDates = new Set();
+      logs.forEach((record) => {
+        if (seenDates.has(record.date)) return;
+        const checkIn = minutesAfterMidnight(record.checkInTime);
+        if (checkIn === null) return;
+        seenDates.add(record.date);
+        if (checkIn > 8 * 60) late += 1;
+        else present += 1;
+        const day = new Date(`${record.date}T00:00:00Z`).getUTCDay();
+        if (day !== 0 && day !== 6) countedWeekdayScans += 1;
+      });
+      return {
+        userId: user.userId || user._id,
+        fullName: user.name || user.fullName || 'Unknown user',
+        present,
+        absent: Math.max(0, userExpectedWorkdays - countedWeekdayScans),
+        late,
+        totalScans: present + late
+      };
+    }).sort((a, b) => a.fullName.localeCompare(b.fullName));
+    const totals = results.reduce((sum, item) => ({
+      present: sum.present + item.present,
+      absent: sum.absent + item.absent,
+      late: sum.late + item.late
+    }), { present: 0, absent: 0, late: 0 });
+    return res.set('Cache-Control', 'no-store').json({ period, value, expectedWorkdays, totals, users: results });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }

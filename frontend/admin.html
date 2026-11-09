@@ -20,6 +20,18 @@
     @media (max-width: 640px) {
       #mapPicker { height: 380px; }
     }
+    @media print {
+      body * { visibility: hidden !important; }
+      #tabReports, #tabReports * { visibility: visible !important; }
+      #tabReports { display: block !important; position: absolute; inset: 0; width: 100%; padding: 0; color: #111 !important; background: #fff !important; }
+      #tabReports .glass-panel { color: #111 !important; background: #fff !important; border: 0 !important; box-shadow: none !important; }
+      #tabReports h3, #tabReports p, #tabReports th, #tabReports td { color: #111 !important; }
+      #tabReports .report-controls, #reportStatus { display: none !important; }
+      #tabReports > .admin-only { display: none !important; }
+      #monthlyReport { display: block !important; }
+      #monthlyReport table { border-collapse: collapse; }
+      #monthlyReport th, #monthlyReport td { border: 1px solid #bbb; }
+    }
   </style>
 
   <meta charset="UTF-8">
@@ -134,51 +146,22 @@
     <!-- TAB 1: DASHBOARD -->
     <div id="tabDashboard" class="space-y-6">
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="glass-panel p-5 rounded-2xl border border-slate-800 flex items-center justify-between">
-          <div>
-            <p class="text-xs font-medium text-slate-400">Total Registered (សរុប)</p>
-            <h3 id="totalRegisteredCount" class="text-3xl font-bold text-white mt-1">0</h3>
-          </div>
-          <div class="w-12 h-12 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center">
-            <i data-lucide="users" class="w-6 h-6"></i>
-          </div>
-        </div>
-        <div class="glass-panel p-5 rounded-2xl border border-slate-800 flex items-center justify-between">
-          <div>
-            <p class="text-xs font-medium text-slate-400">Present Today (វត្តមាន)</p>
-            <h3 class="text-3xl font-bold text-emerald-400 mt-1">1</h3>
-          </div>
-          <div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
-            <i data-lucide="user-check" class="w-6 h-6"></i>
-          </div>
-        </div>
-        <div class="glass-panel p-5 rounded-2xl border border-slate-800 flex items-center justify-between">
-          <div>
-            <p class="text-xs font-medium text-slate-400">Absent Today (អវត្តមាន)</p>
-            <h3 class="text-3xl font-bold text-rose-400 mt-1">1</h3>
-          </div>
-          <div class="w-12 h-12 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center">
-            <i data-lucide="user-x" class="w-6 h-6"></i>
-          </div>
-        </div>
-        <div class="glass-panel p-5 rounded-2xl border border-slate-800 flex items-center justify-between">
-          <div>
-            <p class="text-xs font-medium text-slate-400">Late Arrivals (មកយឺត)</p>
-            <h3 class="text-3xl font-bold text-amber-400 mt-1">1</h3>
-          </div>
-          <div class="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
-            <i data-lucide="clock" class="w-6 h-6"></i>
-          </div>
-        </div>
+        <div class="glass-panel p-5 rounded-2xl border border-slate-800 flex items-center justify-between"><div><p id="analyticsRegisteredLabel" class="text-xs font-medium text-slate-400">Total Registered</p><h3 id="totalRegisteredCount" class="text-3xl font-bold text-white mt-1">0</h3></div><i data-lucide="users" class="w-6 h-6 text-indigo-400"></i></div>
+        <div class="glass-panel p-5 rounded-2xl border border-slate-800 flex items-center justify-between"><div><p id="analyticsPresentLabel" class="text-xs font-medium text-slate-400">Present (On Time)</p><h3 id="analyticsPresentCount" class="text-3xl font-bold text-emerald-400 mt-1">0</h3></div><i data-lucide="user-check" class="w-6 h-6 text-emerald-400"></i></div>
+        <div class="glass-panel p-5 rounded-2xl border border-slate-800 flex items-center justify-between"><div><p id="analyticsAbsentLabel" class="text-xs font-medium text-slate-400">Absent Workdays</p><h3 id="analyticsAbsentCount" class="text-3xl font-bold text-rose-400 mt-1">0</h3></div><i data-lucide="user-x" class="w-6 h-6 text-rose-400"></i></div>
+        <div class="glass-panel p-5 rounded-2xl border border-slate-800 flex items-center justify-between"><div><p id="analyticsLateLabel" class="text-xs font-medium text-slate-400">Late Arrivals</p><h3 id="analyticsLateCount" class="text-3xl font-bold text-amber-400 mt-1">0</h3></div><i data-lucide="clock" class="w-6 h-6 text-amber-400"></i></div>
       </div>
-
-      <div class="glass-panel rounded-2xl p-6 border border-slate-800">
-        <div class="flex justify-between items-center mb-4">
-          <h3 class="text-base font-semibold text-white">Weekly Attendance Analytics</h3>
+      <div class="glass-panel rounded-2xl p-6 border border-slate-800 space-y-4">
+        <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+          <div><h3 id="analyticsTableTitle" class="text-base font-semibold text-white">Monthly Attendance by User</h3><p id="analyticsCaption" class="text-xs text-slate-400 mt-1">Present means on time. Late means after 08:00 AM. Absence counts weekdays without a scan.</p></div>
+          <div class="flex flex-wrap items-end gap-2">
+            <div class="flex rounded-xl border border-slate-700 p-1 bg-slate-900"><button id="analyticsMonthBtn" type="button" onclick="selectAnalyticsPeriod('month')" class="px-3 py-2 rounded-lg text-xs font-semibold">Monthly Data</button><button id="analyticsYearBtn" type="button" onclick="selectAnalyticsPeriod('year')" class="px-3 py-2 rounded-lg text-xs font-semibold">Yearly Data</button></div>
+            <input id="analyticsMonthInput" type="month" class="bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-2 text-xs">
+            <select id="analyticsYearInput" class="hidden bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-2 text-xs"></select>
+            <button type="button" onclick="loadAttendanceAnalytics()" class="py-2 px-4 bg-brand-600 hover:bg-brand-500 text-white font-semibold rounded-lg text-xs">Load</button>
+          </div>
         </div>
-        <div class="w-full h-64">
-          <canvas id="attendanceChart" class="w-full h-full"></canvas>
-        </div>
+        <div class="overflow-x-auto"><table class="w-full text-left text-xs text-slate-300"><thead class="bg-slate-900/80 text-slate-400 uppercase font-semibold"><tr><th class="p-3">User</th><th class="p-3">User ID</th><th class="p-3">Present</th><th class="p-3">Absent</th><th class="p-3">Late</th><th class="p-3">Total Scans</th></tr></thead><tbody id="analyticsUsersBody" class="divide-y divide-slate-800"></tbody></table></div>
       </div>
     </div>
 
@@ -233,21 +216,14 @@
           <thead class="bg-slate-900/80 text-slate-400 uppercase font-semibold border-b border-slate-800">
             <tr>
               <th class="p-4">User</th>
+              <th class="p-4">User ID</th>
               <th class="p-4">Check-In</th>
               <th class="p-4">Check-Out</th>
               <th class="p-4">Status</th>
-              <th class="p-4 text-right">Override Action</th>
+              <th class="p-4 text-right">Correction</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-slate-800">
-            <tr>
-              <td class="p-4 font-medium text-white">John Doe</td>
-              <td class="p-4 text-slate-400">08:00 AM</td>
-              <td class="p-4 text-slate-400">05:00 PM</td>
-              <td class="p-4 text-emerald-400 font-semibold">Present</td>
-              <td class="p-4 text-right"><button class="text-brand-400 hover:underline">Override</button></td>
-            </tr>
-          </tbody>
+          <tbody id="liveLogsTableBody" class="divide-y divide-slate-800"></tbody>
         </table>
       </div>
     </div>
@@ -256,10 +232,34 @@
     <div id="tabReports" class="hidden space-y-6">
       <div class="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4">
         <h3 class="text-base font-semibold text-white">Generate Attendance Reports</h3>
-        <div class="flex gap-3 pt-2">
-          <button onclick="window.print()"
-            class="py-2.5 px-5 bg-rose-600 hover:bg-rose-500 text-white font-semibold rounded-xl text-xs shadow-lg">Printable
-            PDF</button>
+        <div class="flex flex-wrap items-end gap-3 pt-2 report-controls">
+          <label class="text-xs text-slate-400">Report month
+            <input id="reportMonth" type="month" class="mt-1 block bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-2">
+          </label>
+          <button type="button" onclick="loadMonthlyReport()" class="py-2.5 px-5 bg-brand-600 hover:bg-brand-500 text-white font-semibold rounded-xl text-xs">Load report</button>
+          <button type="button" onclick="window.print()" class="py-2.5 px-5 bg-rose-600 hover:bg-rose-500 text-white font-semibold rounded-xl text-xs shadow-lg">Print / Save PDF</button>
+        </div>
+        <p id="reportStatus" class="text-xs text-slate-400" aria-live="polite"></p>
+      </div>
+      <div id="monthlyReport" class="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4">
+        <div>
+          <h3 id="reportTitle" class="text-base font-semibold text-white">Monthly Attendance Report</h3>
+          <p id="reportTotals" class="text-sm text-slate-400 mt-1">Select a month to view attendance totals.</p>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs text-slate-300">
+            <thead class="bg-slate-900/80 text-slate-400 uppercase font-semibold"><tr><th class="p-3">User</th><th class="p-3">User ID</th><th class="p-3">Days Present</th><th class="p-3">Attendance Dates</th></tr></thead>
+            <tbody id="monthlyReportBody" class="divide-y divide-slate-800"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4 admin-only">
+        <h3 class="text-base font-semibold text-white">Attendance Records — Admin Corrections</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs text-slate-300">
+            <thead class="bg-slate-900/80 text-slate-400 uppercase font-semibold"><tr><th class="p-3">Date</th><th class="p-3">User</th><th class="p-3">User ID</th><th class="p-3">Check-In</th><th class="p-3">Check-Out</th><th class="p-3 text-right">Actions</th></tr></thead>
+            <tbody id="monthlyRecordsBody" class="divide-y divide-slate-800"></tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -364,16 +364,42 @@
     </div>
   </div>
 
+  <div id="attendanceEditModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[60] hidden flex items-center justify-center p-4">
+    <div class="glass-panel max-w-lg w-full rounded-2xl p-6 border border-slate-700 shadow-2xl">
+      <div class="flex justify-between items-center mb-5"><h3 class="text-lg font-bold text-white">Correct Attendance Record</h3><button type="button" onclick="closeAttendanceEditor()" class="text-slate-400 hover:text-white">Close</button></div>
+      <form id="attendanceEditForm" onsubmit="saveAttendanceCorrection(event)" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <input id="attendanceRecordId" type="hidden">
+        <label class="text-xs text-slate-400">User ID<input id="attendanceEditUserId" required class="mt-1 w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-2"></label>
+        <label class="text-xs text-slate-400">Attendance date<input id="attendanceEditDate" type="date" required class="mt-1 w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-2"></label>
+        <label class="text-xs text-slate-400">Check-In time<input id="attendanceEditCheckIn" type="time" step="1" required class="mt-1 w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-2"></label>
+        <label class="text-xs text-slate-400">Check-Out time (optional)<input id="attendanceEditCheckOut" type="time" step="1" class="mt-1 w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-2"></label>
+        <p id="attendanceEditStatus" class="sm:col-span-2 text-xs text-slate-400" aria-live="polite"></p>
+        <div class="sm:col-span-2 flex justify-between gap-3">
+          <button type="button" onclick="deleteAttendanceCorrection()" class="py-2.5 px-4 bg-red-700 hover:bg-red-600 text-white font-semibold rounded-lg text-xs">Delete record</button>
+          <div class="flex gap-2"><button type="button" onclick="closeAttendanceEditor()" class="py-2.5 px-4 bg-slate-700 text-white rounded-lg text-xs">Cancel</button><button type="submit" class="py-2.5 px-4 bg-brand-600 hover:bg-brand-500 text-white font-semibold rounded-lg text-xs">Save correction</button></div>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script>
     // ពិនិត្យសិទ្ធិ User ពេលទំព័រ Load ចូលមក
     let currentUser = null;
     let usersCache = [];
     let editingUserId = null;
+    window.attendanceRecordCache = new Map();
     const isCurrentUserAdmin = () => String(currentUser?.role || '').toLowerCase() === 'admin';
     const authHeaders = () => ({
       'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
       'Content-Type': 'application/json'
     });
+    const readApiResponse = async (response) => {
+      const text = await response.text();
+      try { return text ? JSON.parse(text) : {}; }
+      catch {
+        throw new Error('The attendance API returned HTML instead of JSON. Restart the backend in the backend folder, then reload this page.');
+      }
+    };
     const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
     })[char]);
@@ -401,6 +427,11 @@
       if (!isCurrentUserAdmin()) {
         const btnAdd = document.getElementById('btnAddUser');
         if (btnAdd) btnAdd.style.display = 'none';
+        ['tabBtnLogs', 'tabBtnReports'].forEach((id) => {
+          const button = document.getElementById(id);
+          if (button) button.style.display = 'none';
+        });
+        document.querySelectorAll('.admin-only').forEach((element) => { element.style.display = 'none'; });
       }
       applyGeofenceAccess();
       document.getElementById('locationSearchInput').addEventListener('keydown', (event) => {
@@ -410,7 +441,7 @@
         }
       });
 
-      initAttendanceChart();
+      initializeAnalyticsFilters();
       loadUsers();
       geofenceSettingsPromise = loadGeofenceSettings();
     });
@@ -591,6 +622,7 @@
           initMapPicker();
         }, 200);
       }
+      if (tabName === 'reports') loadMonthlyReport();
     }
 
     function initMapPicker() {
@@ -697,36 +729,99 @@
       }
     }
 
-    function initAttendanceChart() {
-      const ctx = document.getElementById('attendanceChart')?.getContext('2d');
-      if (!ctx) return;
+    let analyticsPeriod = 'month';
+    function initializeAnalyticsFilters() {
+      const now = new Date();
+      const month = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit' }).format(now);
+      const year = Number(new Intl.DateTimeFormat('en', { timeZone: 'Asia/Bangkok', year: 'numeric' }).format(now));
+      document.getElementById('analyticsMonthInput').value = month;
+      const yearSelect = document.getElementById('analyticsYearInput');
+      yearSelect.replaceChildren();
+      for (let optionYear = year; optionYear >= year - 5; optionYear -= 1) {
+        const option = document.createElement('option');
+        option.value = String(optionYear);
+        option.textContent = String(optionYear);
+        yearSelect.append(option);
+      }
+      selectAnalyticsPeriod('month');
+    }
 
-      new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-          datasets: [{
-            label: 'Attendance Rate',
-            data: [62, 71, 74, 68, 79, 45, 38],
-            borderColor: '#6366f1',
-            backgroundColor: 'rgba(99, 102, 241, 0.1)',
-            borderWidth: 3,
-            fill: true,
-            tension: 0.4,
-            pointBackgroundColor: '#818cf8',
-            pointRadius: 4
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: {
-            x: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#94a3b8' } },
-            y: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#94a3b8' } }
-          }
+    function selectAnalyticsPeriod(period) {
+      analyticsPeriod = period === 'year' ? 'year' : 'month';
+      document.getElementById('analyticsMonthInput').classList.toggle('hidden', analyticsPeriod !== 'month');
+      document.getElementById('analyticsYearInput').classList.toggle('hidden', analyticsPeriod !== 'year');
+      document.getElementById('analyticsMonthBtn').className = analyticsPeriod === 'month'
+        ? 'px-3 py-2 rounded-lg text-xs font-semibold bg-brand-600 text-white'
+        : 'px-3 py-2 rounded-lg text-xs font-semibold text-slate-400';
+      document.getElementById('analyticsYearBtn').className = analyticsPeriod === 'year'
+        ? 'px-3 py-2 rounded-lg text-xs font-semibold bg-brand-600 text-white'
+        : 'px-3 py-2 rounded-lg text-xs font-semibold text-slate-400';
+      loadAttendanceAnalytics();
+    }
+
+    async function loadAttendanceAnalytics() {
+      const month = document.getElementById('analyticsMonthInput').value;
+      const year = document.getElementById('analyticsYearInput').value;
+      const value = analyticsPeriod === 'month' ? month : year;
+      const body = document.getElementById('analyticsUsersBody');
+      if (!value || !body) return;
+      body.replaceChildren();
+      document.getElementById('analyticsPresentCount').textContent = '—';
+      document.getElementById('analyticsAbsentCount').textContent = '—';
+      document.getElementById('analyticsLateCount').textContent = '—';
+      const query = new URLSearchParams({ period: analyticsPeriod, value });
+      const isAdmin = isCurrentUserAdmin();
+      try {
+        const response = await fetch(window.apiUrl('/api/attendance/analytics?' + query), {
+          headers: authHeaders(), cache: 'no-store'
+        });
+        const result = await readApiResponse(response);
+        if (!response.ok) throw new Error(result.message || 'Could not load attendance analytics.');
+        const periodLabel = analyticsPeriod === 'month'
+          ? new Intl.DateTimeFormat('en', { month: 'long', year: 'numeric', timeZone: 'Asia/Bangkok' }).format(new Date(value + '-01T12:00:00+07:00'))
+          : value;
+        document.getElementById('analyticsTableTitle').textContent = (analyticsPeriod === 'month' ? 'Monthly' : 'Yearly') + (isAdmin ? ' Attendance by User - ' : ' My Attendance - ') + periodLabel;
+        document.getElementById('analyticsPresentLabel').textContent = 'Present (On Time) Days';
+        document.getElementById('analyticsAbsentLabel').textContent = 'Absent Workdays';
+        document.getElementById('analyticsLateLabel').textContent = 'Late Arrival Days';
+        document.getElementById('analyticsPresentCount').textContent = result.totals.present;
+        document.getElementById('analyticsAbsentCount').textContent = result.totals.absent;
+        document.getElementById('analyticsLateCount').textContent = result.totals.late;
+        document.getElementById('analyticsCaption').textContent = (isAdmin ? 'All users. ' : 'Only your attendance is shown. ') + 'On time is before 08:00 AM. Late is after 08:00 AM. Absence counts weekdays without a scan; public holidays are not configured.';
+        if (!result.users.length) {
+          const row = document.createElement('tr');
+          const cell = document.createElement('td');
+          cell.colSpan = 6;
+          cell.className = 'p-5 text-center text-slate-400';
+          cell.textContent = isAdmin ? 'No registered non-admin users.' : 'No attendance summary found for this account.';
+          row.append(cell);
+          body.append(row);
+          return;
         }
-      });
+        result.users.forEach((user) => {
+          const row = document.createElement('tr');
+          [user.fullName, user.userId, String(user.present), String(user.absent), String(user.late), String(user.totalScans)].forEach((value) => {
+            const cell = document.createElement('td');
+            cell.className = 'p-3';
+            cell.textContent = value;
+            row.append(cell);
+          });
+          body.append(row);
+        });
+        const total = document.getElementById('totalRegisteredCount');
+        if (total) total.textContent = result.users.length;
+        const registeredLabel = document.getElementById('analyticsRegisteredLabel');
+        if (registeredLabel) registeredLabel.textContent = isAdmin ? 'Total Registered' : 'My Account';
+      } catch (error) {
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = 6;
+        cell.className = 'p-5 text-center text-rose-300';
+        cell.textContent = error.message || 'Could not load attendance analytics.';
+        row.append(cell);
+        body.append(row);
+        console.error('Error loading attendance analytics:', error);
+      }
     }
 
     function toggleLang() {
@@ -746,7 +841,7 @@
         usersCache = Array.isArray(data) ? data : (data.users || []);
         renderUsersTable(usersCache);
         const total = document.getElementById('totalRegisteredCount');
-        if (total) total.textContent = usersCache.length;
+        if (total) total.textContent = usersCache.filter((user) => String(user.role || '').toLowerCase() !== 'admin').length;
 
       } catch (err) {
         console.warn('មិនអាចភ្ជាប់ទៅ Server បានទេ:', err);
@@ -878,30 +973,49 @@
       if (!isCurrentUserAdmin()) return;
       try {
         const res = await fetch(window.apiUrl('/api/attendance/today'), { headers: authHeaders() });
-        const logs = await res.json();
+        const logs = await readApiResponse(res);
         if (!res.ok) throw new Error(logs.message || `Request failed (${res.status})`);
 
         const tbody = document.getElementById('liveLogsTableBody');
         if (!tbody) return;
 
-        tbody.innerHTML = '';
-        logs.forEach(log => {
-          const checkInStr = log.checkInTime || '-';
-          const checkOutStr = log.checkOutTime || 'Not checked out';
-
-          const statusBadge = log.status === 'Late'
-            ? '<span class="px-2 py-0.5 rounded text-[11px] bg-amber-500/10 text-amber-400 border border-amber-500/20">Late (មកយឺត)</span>'
-            : '<span class="px-2 py-0.5 rounded text-[11px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Present (ទាន់ម៉ោង)</span>';
-
-          tbody.innerHTML += `
-                <tr class="border-b border-slate-800/60 hover:bg-slate-900/40 transition">
-                    <td class="p-4 font-bold text-white">${log.fullName}</td>
-                    <td class="p-4 text-slate-400 font-mono">${log.userId}</td>
-                    <td class="p-4 text-slate-300">${checkInStr}</td>
-                    <td class="p-4 text-slate-300">${checkOutStr}</td>
-                    <td class="p-4">${statusBadge}</td>
-                </tr>
-            `;
+        tbody.replaceChildren();
+        window.attendanceRecordCache = new Map(logs.map((log) => [log._id, log]));
+        if (!logs.length) {
+          const row = document.createElement('tr');
+          const cell = document.createElement('td');
+          cell.colSpan = 6;
+          cell.className = 'p-6 text-center text-slate-400';
+          cell.textContent = 'No attendance records for today.';
+          row.append(cell);
+          tbody.append(row);
+          return;
+        }
+        logs.forEach((log) => {
+          const row = document.createElement('tr');
+          row.className = 'border-b border-slate-800/60 hover:bg-slate-900/40 transition';
+          [log.fullName || 'Unknown user', log.userId || '-', log.checkInTime || '-', log.checkOutTime || 'Not checked out'].forEach((value, index) => {
+            const cell = document.createElement('td');
+            cell.className = index < 2 ? 'p-4 font-medium text-white' : 'p-4 text-slate-300 font-mono';
+            cell.textContent = value;
+            row.append(cell);
+          });
+          const statusCell = document.createElement('td');
+          statusCell.className = 'p-4 text-emerald-400 font-semibold';
+          statusCell.textContent = log.checkOutTime ? 'Checked-Out' : 'Checked-In';
+          row.append(statusCell);
+          const actionCell = document.createElement('td');
+          actionCell.className = 'p-4 text-right';
+          if (isCurrentUserAdmin()) {
+            const editButton = document.createElement('button');
+            editButton.type = 'button';
+            editButton.className = 'text-brand-400 hover:underline';
+            editButton.textContent = 'Edit';
+            editButton.onclick = () => window.openAttendanceEditor(log._id);
+            actionCell.append(editButton);
+          }
+          row.append(actionCell);
+          tbody.append(row);
         });
       } catch (err) {
         console.error('Error fetching live logs:', err);
@@ -909,12 +1023,112 @@
     }
 
     // ឱ្យវា rerun ទិន្នន័យស្វ័យប្រវត្តិរៀងរាល់ 3 វិនាទីម្តង (Real-time feel)
+
+    function renderMonthlyRecordDetails(records) {
+      const body = document.getElementById('monthlyRecordsBody');
+      if (!body) return;
+      body.replaceChildren();
+      if (!records.length) {
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = 6;
+        cell.className = 'p-5 text-center text-slate-400';
+        cell.textContent = 'No records available to correct for this month.';
+        row.append(cell);
+        body.append(row);
+        return;
+      }
+      records.forEach((record) => {
+        const row = document.createElement('tr');
+        [record.date || '-', record.fullName || 'Unknown user', record.userId || '-', record.checkInTime || '-', record.checkOutTime || 'Not checked out'].forEach((value) => {
+          const cell = document.createElement('td');
+          cell.className = 'p-3';
+          cell.textContent = value;
+          row.append(cell);
+        });
+        const actionCell = document.createElement('td');
+        actionCell.className = 'p-3 text-right';
+        if (isCurrentUserAdmin()) {
+          const editButton = document.createElement('button');
+          editButton.type = 'button';
+          editButton.className = 'text-brand-400 hover:underline';
+          editButton.textContent = 'Edit / Delete';
+          editButton.onclick = () => window.openAttendanceEditor(record._id);
+          actionCell.append(editButton);
+        }
+        row.append(actionCell);
+        body.append(row);
+      });
+    }
+
+    const getBangkokMonth = () => new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit'
+    }).format(new Date());
+
+    async function loadMonthlyReport() {
+      const monthInput = document.getElementById('reportMonth');
+      const status = document.getElementById('reportStatus');
+      const body = document.getElementById('monthlyReportBody');
+      if (!monthInput || !body) return;
+      if (!monthInput.value) monthInput.value = getBangkokMonth();
+      status.textContent = 'Loading monthly attendance...';
+      try {
+        const response = await fetch(window.apiUrl('/api/attendance/month?month=' + encodeURIComponent(monthInput.value)), {
+          headers: authHeaders(), cache: 'no-store'
+        });
+        const records = await readApiResponse(response);
+        if (!response.ok) throw new Error(records.message || 'Could not load monthly report.');
+        const monthLabel = new Intl.DateTimeFormat('en', { month: 'long', year: 'numeric', timeZone: 'Asia/Bangkok' })
+          .format(new Date(monthInput.value + '-01T12:00:00+07:00'));
+        document.getElementById('reportTitle').textContent = 'Monthly Attendance Report - ' + monthLabel;
+        window.attendanceRecordCache = new Map(records.map((record) => [record._id, record]));
+        renderMonthlyRecordDetails(records);
+        const grouped = new Map();
+        records.forEach((record) => {
+          const key = String(record.userId || record.user || record.fullName || 'unknown');
+          if (!grouped.has(key)) grouped.set(key, { fullName: record.fullName || 'Unknown user', userId: record.userId || key, dates: new Set() });
+          grouped.get(key).dates.add(record.date);
+        });
+        const reportUsers = [...grouped.values()].sort((a, b) => a.fullName.localeCompare(b.fullName));
+        const attendanceDays = reportUsers.reduce((total, user) => total + user.dates.size, 0);
+        document.getElementById('reportTotals').textContent = reportUsers.length + ' users attended; ' + attendanceDays + ' total attendance days';
+        body.replaceChildren();
+        if (!reportUsers.length) {
+          const row = document.createElement('tr');
+          const cell = document.createElement('td');
+          cell.colSpan = 4;
+          cell.className = 'p-5 text-center text-slate-400';
+          cell.textContent = 'No attendance records for this month.';
+          row.append(cell);
+          body.append(row);
+        } else {
+          reportUsers.forEach((user) => {
+            const row = document.createElement('tr');
+            [user.fullName, user.userId, String(user.dates.size), [...user.dates].sort().join(', ')].forEach((value) => {
+              const cell = document.createElement('td');
+              cell.className = 'p-3';
+              cell.textContent = value;
+              row.append(cell);
+            });
+            body.append(row);
+          });
+        }
+        status.textContent = 'Report loaded for ' + monthLabel + '.';
+      } catch (error) {
+        document.getElementById('reportTotals').textContent = 'No report data is available.';
+        const details = document.getElementById('monthlyRecordsBody');
+        if (details) details.replaceChildren();
+        status.textContent = error.message || 'Unable to load monthly attendance.';
+        console.error('Error loading monthly report:', error);
+      }
+    }
     setInterval(fetchLiveAttendance, 3000);
 
     document.addEventListener('DOMContentLoaded', () => {
       fetchLiveAttendance();
     });
   </script>
+  <script src="js/admin-attendance.js"></script>
 </body>
 
 </html>
